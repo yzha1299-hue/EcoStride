@@ -66,12 +66,15 @@ body {
   background: linear-gradient(180deg, var(--es-green-soft) 0%, #fff 100%);
 }
 
-.hero-visual {
-  min-height: 240px;
-  border-radius: 16px;
-  background:
-    linear-gradient(135deg, rgba(20, 92, 58, 0.85), rgba(27, 122, 78, 0.7)),
-    repeating-linear-gradient(45deg, #2d9a64 0, #2d9a64 12px, #238456 12px, #238456 24px);
+.hero-image {
+  display: block;
+  height: auto;
+  object-fit: cover;
+}
+
+.card-img-top {
+  height: 160px;
+  object-fit: cover;
 }
 
 .stat-card {

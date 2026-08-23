@@ -1,19 +1,27 @@
 <script setup>
+import heroImage from '../assets/hero-active-travel.svg'
+import travelImage from '../assets/card-travel.svg'
+import clubsImage from '../assets/card-clubs.svg'
+import eventsImage from '../assets/card-events.svg'
+
 const experiences = [
   {
     title: 'Active Travel',
     description: 'Find safe walking and cycling routes.',
     action: 'Open',
+    image: travelImage,
   },
   {
     title: 'Club Sustainability',
     description: 'Help clubs cut energy and travel emissions.',
     action: 'Open',
+    image: clubsImage,
   },
   {
     title: 'Events & Workshops',
     description: 'Register for community green sessions.',
     action: 'Open',
+    image: eventsImage,
   },
 ]
 
@@ -57,12 +65,11 @@ const guides = [
             </div>
           </div>
           <div class="col-12 col-lg-6">
-            <div class="hero-visual d-flex align-items-center justify-content-center">
-              <div class="text-center text-white px-3">
-                <p class="h4 fw-semibold mb-1">Walk · Cycle · Share</p>
-                <p class="mb-0 opacity-75">Hero image placeholder</p>
-              </div>
-            </div>
+            <img
+              class="img-fluid w-100 rounded-4 hero-image"
+              :src="heroImage"
+              alt="People cycling on a green Melbourne path"
+            />
           </div>
         </div>
       </div>
@@ -74,6 +81,7 @@ const guides = [
         <div class="row g-3">
           <div v-for="item in experiences" :key="item.title" class="col-12 col-md-6 col-lg-4">
             <article class="card h-100 shadow-sm">
+              <img class="card-img-top img-fluid" :src="item.image" :alt="item.title" />
               <div class="card-body d-flex flex-column">
                 <h3 class="h5 fw-bold">{{ item.title }}</h3>
                 <p class="text-muted flex-grow-1">{{ item.description }}</p>

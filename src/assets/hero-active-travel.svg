@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480" role="img" aria-label="Cyclists on a green Melbourne path">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#b7e4c7"/>
+      <stop offset="100%" stop-color="#d8f3dc"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="480" fill="url(#sky)"/>
+  <rect x="0" y="310" width="800" height="170" fill="#1b7a4e"/>
+  <rect x="0" y="300" width="800" height="18" fill="#145c3a"/>
+  <circle cx="650" cy="90" r="42" fill="#fff3b0"/>
+  <rect x="90" y="170" width="70" height="140" fill="#2d6a4f"/>
+  <rect x="190" y="130" width="90" height="180" fill="#40916c"/>
+  <rect x="320" y="150" width="60" height="160" fill="#2d6a4f"/>
+  <rect x="520" y="160" width="80" height="150" fill="#40916c"/>
+  <circle cx="220" cy="360" r="28" fill="#111"/>
+  <circle cx="310" cy="360" r="28" fill="#111"/>
+  <rect x="230" y="300" width="80" height="18" rx="6" fill="#fff"/>
+  <path d="M250 300 L270 250 L320 250" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="270" cy="236" r="12" fill="#ffd166"/>
+</svg>
