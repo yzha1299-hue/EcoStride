@@ -1,35 +1,96 @@
-@import './base.css';
-
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  font-weight: normal;
+:root {
+  --es-green: #1b7a4e;
+  --es-green-dark: #145c3a;
+  --es-green-soft: #e8f5ee;
 }
 
-a,
-.green {
+body {
+  min-height: 100vh;
+  color: #1a2b22;
+  background: #fff;
+  font-family:
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+}
+
+.btn-success {
+  --bs-btn-bg: var(--es-green);
+  --bs-btn-border-color: var(--es-green);
+  --bs-btn-hover-bg: var(--es-green-dark);
+  --bs-btn-hover-border-color: var(--es-green-dark);
+  --bs-btn-active-bg: var(--es-green-dark);
+  --bs-btn-active-border-color: var(--es-green-dark);
+}
+
+.btn-outline-success {
+  --bs-btn-color: var(--es-green);
+  --bs-btn-border-color: var(--es-green);
+  --bs-btn-hover-bg: var(--es-green);
+  --bs-btn-hover-border-color: var(--es-green);
+  --bs-btn-active-bg: var(--es-green-dark);
+  --bs-btn-active-border-color: var(--es-green-dark);
+}
+
+.text-success {
+  color: var(--es-green) !important;
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--es-green);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.brand-text {
+  font-weight: 700;
+  color: var(--es-green-dark);
+}
+
+.nav-link.active {
+  color: var(--es-green) !important;
+  font-weight: 600;
+}
+
+.hero-section {
+  background: linear-gradient(180deg, var(--es-green-soft) 0%, #fff 100%);
+}
+
+.hero-visual {
+  min-height: 240px;
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(20, 92, 58, 0.85), rgba(27, 122, 78, 0.7)),
+    repeating-linear-gradient(45deg, #2d9a64 0, #2d9a64 12px, #238456 12px, #238456 24px);
+}
+
+.stat-card {
+  background: #fff;
+  border: 1px solid #dce8e1;
+  border-radius: 12px;
+}
+
+.footer-link {
+  color: #345044;
   text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
-  padding: 3px;
+  font-size: 0.9rem;
 }
 
-@media (hover: hover) {
-  a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
-  }
+.footer-link:hover {
+  color: var(--es-green);
+  text-decoration: underline;
 }
 
-@media (min-width: 1024px) {
-  body {
-    display: flex;
-    place-items: center;
-  }
-
-  #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
-  }
+.site-footer {
+  background: #f6faf7;
 }
