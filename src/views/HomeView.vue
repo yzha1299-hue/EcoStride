@@ -10,6 +10,7 @@ const experiences = [
     description: 'Find safe walking and cycling routes.',
     action: 'Open',
     image: travelImage,
+    to: '/active-travel',
   },
   {
     title: 'Club Sustainability',
@@ -59,7 +60,7 @@ const guides = [
               safer routes, greener clubs, and local events.
             </p>
             <div class="d-flex flex-wrap gap-2">
-              <a class="btn btn-success" href="#">Find Safe Routes</a>
+              <RouterLink class="btn btn-success" to="/active-travel">Find Safe Routes</RouterLink>
               <a class="btn btn-outline-success" href="#">Join an Event</a>
               <a class="btn btn-light border" href="#">Club Tools</a>
             </div>
@@ -85,7 +86,14 @@ const guides = [
               <div class="card-body d-flex flex-column">
                 <h3 class="h5 fw-bold">{{ item.title }}</h3>
                 <p class="text-muted flex-grow-1">{{ item.description }}</p>
-                <a class="btn btn-outline-success btn-sm align-self-start" href="#">
+                <RouterLink
+                  v-if="item.to"
+                  class="btn btn-outline-success btn-sm align-self-start"
+                  :to="item.to"
+                >
+                  {{ item.action }}
+                </RouterLink>
+                <a v-else class="btn btn-outline-success btn-sm align-self-start" href="#">
                   {{ item.action }}
                 </a>
               </div>

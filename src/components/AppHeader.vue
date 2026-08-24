@@ -1,12 +1,11 @@
 <script setup>
-import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
 
 const navItems = [
   { label: 'Home', to: '/' },
-  { label: 'Active Travel', to: '#' },
+  { label: 'Active Travel', to: '/active-travel' },
   { label: 'Clubs', to: '#' },
   { label: 'Gear', to: '#' },
   { label: 'Events', to: '#' },
@@ -14,7 +13,9 @@ const navItems = [
   { label: 'Help', to: '#' },
 ]
 
-const isHome = computed(() => route.path === '/')
+function isCurrent(item) {
+  return item.to !== '#' && route.path === item.to
+}
 </script>
 
 <template>
@@ -44,7 +45,7 @@ const isHome = computed(() => route.path === '/')
               <RouterLink
                 v-if="item.to !== '#'"
                 class="nav-link"
-                :class="{ active: isHome && item.to === '/' }"
+                :class="{ active: isCurrent(item) }"
                 :to="item.to"
               >
                 {{ item.label }}

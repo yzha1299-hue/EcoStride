@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 560" role="img" aria-label="Map of cycling and walking routes">
+  <rect width="800" height="560" fill="#e8f5ee"/>
+  <path d="M40 80 H760 V500 H40 Z" fill="#d8f3dc" stroke="#95d5b2" stroke-width="4"/>
+  <path d="M80 420 C220 360 280 240 420 220 S680 180 720 120" fill="none" stroke="#1b7a4e" stroke-width="14" stroke-linecap="round"/>
+  <path d="M90 480 C240 430 360 360 480 340 S640 300 710 240" fill="none" stroke="#40916c" stroke-width="8" stroke-linecap="round" stroke-dasharray="18 12"/>
+  <circle cx="220" cy="370" r="12" fill="#145c3a"/>
+  <circle cx="420" cy="220" r="12" fill="#145c3a"/>
+  <circle cx="640" cy="160" r="12" fill="#145c3a"/>
+  <rect x="56" y="24" width="220" height="36" rx="8" fill="#145c3a"/>
+  <text x="166" y="48" text-anchor="middle" fill="#fff" font-family="Segoe UI, Arial, sans-serif" font-size="16">Safe route map</text>
+</svg>

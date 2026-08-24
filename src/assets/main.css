@@ -97,3 +97,36 @@ body {
 .site-footer {
   background: #f6faf7;
 }
+
+.search-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.search-feedback {
+  min-height: 2.75rem;
+  margin-top: 0.25rem;
+}
+
+.search-feedback .invalid-feedback {
+  margin: 0;
+}
+
+.filter-chip {
+  background: var(--es-green-soft);
+  color: var(--es-green-dark);
+  font-weight: 600;
+  padding: 0.5rem 0.85rem;
+}
+
+.map-panel {
+  min-height: 280px;
+  object-fit: cover;
+  background: var(--es-green-soft);
+}
+
+.route-thumb {
+  height: 100%;
+  min-height: 88px;
+  object-fit: cover;
+}
