@@ -1,8 +1,14 @@
 <script setup>
+import { computed } from 'vue'
 import heroImage from '../assets/hero-active-travel.svg'
 import travelImage from '../assets/card-travel.svg'
 import clubsImage from '../assets/card-clubs.svg'
 import eventsImage from '../assets/card-events.svg'
+import { useJsonData } from '../composables/useJsonData'
+import { formatNumber } from '../utils/format'
+
+const { data, loading, error } = useJsonData('/data/impact.json')
+const stats = computed(() => data.value?.communityTotals ?? [])
 
 const experiences = [
   {
@@ -17,20 +23,15 @@ const experiences = [
     description: 'Help clubs cut energy and travel emissions.',
     action: 'Open',
     image: clubsImage,
+    to: '/clubs',
   },
   {
     title: 'Events & Workshops',
     description: 'Register for community green sessions.',
     action: 'Open',
     image: eventsImage,
+    to: '/events',
   },
-]
-
-const stats = [
-  { value: '1,240', label: 'Route searches' },
-  { value: '318', label: 'Event sign-ups' },
-  { value: '86', label: 'Gear shares' },
-  { value: '4,920', label: 'kg CO₂ saved' },
 ]
 
 const guides = [
@@ -61,8 +62,8 @@ const guides = [
             </p>
             <div class="d-flex flex-wrap gap-2">
               <RouterLink class="btn btn-success" to="/active-travel">Find Safe Routes</RouterLink>
-              <a class="btn btn-outline-success" href="#">Join an Event</a>
-              <a class="btn btn-light border" href="#">Club Tools</a>
+              <RouterLink class="btn btn-outline-success" to="/events">Join an Event</RouterLink>
+              <RouterLink class="btn btn-light border" to="/clubs">Club Tools</RouterLink>
             </div>
           </div>
           <div class="col-12 col-lg-6">
@@ -105,11 +106,16 @@ const guides = [
 
     <section class="py-5 bg-light">
       <div class="container">
-        <h2 class="h3 fw-bold mb-4">Impact snapshot</h2>
-        <div class="row g-3">
-          <div v-for="stat in stats" :key="stat.label" class="col-6 col-lg-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+          <h2 class="h3 fw-bold mb-0">Impact snapshot</h2>
+          <RouterLink class="btn btn-outline-success btn-sm" to="/impact">View impact</RouterLink>
+        </div>
+        <p v-if="loading" class="text-muted mb-0">Loading impact data…</p>
+        <p v-else-if="error" class="text-danger mb-0">{{ error }}</p>
+        <div v-else class="row g-3">
+          <div v-for="stat in stats" :key="stat.key" class="col-6 col-lg-3">
             <div class="stat-card text-center p-4 h-100">
-              <div class="display-6 fw-bold text-success">{{ stat.value }}</div>
+              <div class="display-6 fw-bold text-success">{{ formatNumber(stat.value) }}</div>
               <div class="text-muted">{{ stat.label }}</div>
             </div>
           </div>

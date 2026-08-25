@@ -1,0 +1,66 @@
+{
+  "clubs": [
+    {
+      "id": "footscray-fc",
+      "name": "Footscray Football Club",
+      "auditsDone": 4,
+      "carpoolSeats": 18,
+      "kgCo2": 210
+    },
+    {
+      "id": "carlton-cc",
+      "name": "Carlton Cycling Club",
+      "auditsDone": 6,
+      "carpoolSeats": 9,
+      "kgCo2": 164
+    },
+    {
+      "id": "richmond-nc",
+      "name": "Richmond Netball Club",
+      "auditsDone": 3,
+      "carpoolSeats": 22,
+      "kgCo2": 198
+    },
+    {
+      "id": "stkilda-ac",
+      "name": "St Kilda Aquatic Club",
+      "auditsDone": 5,
+      "carpoolSeats": 11,
+      "kgCo2": 142
+    }
+  ],
+  "tools": [
+    {
+      "id": "energy-audit",
+      "title": "Energy self-assessment",
+      "description": "Short checklist for lights, heating, and facilities.",
+      "action": "Start audit"
+    },
+    {
+      "id": "carpools",
+      "title": "Match-day carpools",
+      "description": "Post rides, join seats, cut match-day car trips.",
+      "action": "Open carpools"
+    },
+    {
+      "id": "guides",
+      "title": "Green facility guides",
+      "description": "Simple actions clubs can take this season.",
+      "action": "View guides"
+    }
+  ],
+  "related": [
+    {
+      "id": "gear",
+      "title": "Gear exchange",
+      "description": "Share kits and reduce equipment waste.",
+      "to": "#"
+    },
+    {
+      "id": "workshops",
+      "title": "Club workshops",
+      "description": "Book a sustainability session.",
+      "to": "/events"
+    }
+  ]
+}

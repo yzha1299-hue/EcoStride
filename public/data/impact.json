@@ -1,0 +1,34 @@
+{
+  "communityTotals": [
+    { "key": "routeSearches", "label": "Route searches", "value": 1240 },
+    { "key": "eventSignups", "label": "Event sign-ups", "value": 318 },
+    { "key": "gearShares", "label": "Gear shares", "value": 86 },
+    { "key": "co2Saved", "label": "kg CO₂ saved", "value": 4920 }
+  ],
+  "personal": {
+    "tripsLogged": 12,
+    "kmActive": 48,
+    "kgCo2": 16,
+    "progressPercent": 64
+  },
+  "stories": [
+    {
+      "id": "story-commute",
+      "title": "A safer first commute",
+      "quote": "The lit path to Footscray station made cycling to training feel possible.",
+      "imageKey": "travel"
+    },
+    {
+      "id": "story-carpool",
+      "title": "Match-day carpooling",
+      "quote": "Sharing a ride with two teammates cut our Sunday car trips in half.",
+      "imageKey": "clubs"
+    },
+    {
+      "id": "story-workshop",
+      "title": "Workshop weekend",
+      "quote": "The family ride intro showed us a quiet route we now use every Saturday.",
+      "imageKey": "events"
+    }
+  ]
+}

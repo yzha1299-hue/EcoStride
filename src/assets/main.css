@@ -125,8 +125,41 @@ body {
   background: var(--es-green-soft);
 }
 
-.route-thumb {
-  height: 100%;
-  min-height: 88px;
+.progress-track {
+  height: 1.5rem;
+}
+
+.progress-track .progress-bar {
+  background-color: var(--es-green) !important;
+}
+
+.date-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 104px;
+  margin: 0.75rem;
+  border-radius: 12px;
+  background: var(--es-green);
+  color: #fff;
+  text-align: center;
+}
+
+.date-badge-month,
+.date-badge-week {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.date-badge-day {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.story-photo {
+  height: 140px;
   object-fit: cover;
 }
