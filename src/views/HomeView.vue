@@ -6,6 +6,7 @@ import clubsImage from '../assets/card-clubs.svg'
 import eventsImage from '../assets/card-events.svg'
 import { useJsonData } from '../composables/useJsonData'
 import { formatNumber } from '../utils/format'
+<<<<<<< HEAD
 
 const { data: impactData, loading, error } = useJsonData('impact')
 const { data: homeData } = useJsonData('home')
@@ -19,6 +20,46 @@ const cardImages = {
 const stats = computed(() => impactData.value?.communityTotals ?? [])
 const experiences = computed(() => homeData.value?.experiences ?? [])
 const guides = computed(() => homeData.value?.guides ?? [])
+=======
+
+const { data, loading, error } = useJsonData('/data/impact.json')
+const stats = computed(() => data.value?.communityTotals ?? [])
+
+const experiences = [
+  {
+    title: 'Active Travel',
+    description: 'Find safe walking and cycling routes.',
+    action: 'Open',
+    image: travelImage,
+    to: '/active-travel',
+  },
+  {
+    title: 'Club Sustainability',
+    description: 'Help clubs cut energy and travel emissions.',
+    action: 'Open',
+    image: clubsImage,
+    to: '/clubs',
+  },
+  {
+    title: 'Events & Workshops',
+    description: 'Register for community green sessions.',
+    action: 'Open',
+    image: eventsImage,
+    to: '/events',
+  },
+]
+
+const guides = [
+  {
+    title: 'For participants',
+    description: 'Families, youth, casual commuters — how to find routes and join events.',
+  },
+  {
+    title: 'For club admins',
+    description: 'Run audits, carpools, and gear sharing with low-barrier tools.',
+  },
+]
+>>>>>>> 78d6a04e71bc50a9e0158cb76be0e9df46279b21
 </script>
 
 <template>
@@ -85,7 +126,11 @@ const guides = computed(() => homeData.value?.guides ?? [])
           <h2 class="h3 fw-bold mb-0">Impact snapshot</h2>
           <RouterLink class="btn btn-outline-success btn-sm" to="/impact">View impact</RouterLink>
         </div>
+<<<<<<< HEAD
         <p v-if="loading" class="text-muted mb-0">Loading impact data...</p>
+=======
+        <p v-if="loading" class="text-muted mb-0">Loading impact data…</p>
+>>>>>>> 78d6a04e71bc50a9e0158cb76be0e9df46279b21
         <p v-else-if="error" class="text-danger mb-0">{{ error }}</p>
         <div v-else class="row g-3">
           <div v-for="stat in stats" :key="stat.key" class="col-6 col-lg-3">

@@ -12,7 +12,11 @@ const storyImages = {
   events: eventsImage,
 }
 
+<<<<<<< HEAD
 const { data, loading, error } = useJsonData('impact')
+=======
+const { data, loading, error } = useJsonData('/data/impact.json')
+>>>>>>> 78d6a04e71bc50a9e0158cb76be0e9df46279b21
 
 const communityTotals = computed(() => data.value?.communityTotals ?? [])
 const personal = computed(() => data.value?.personal ?? null)
@@ -26,7 +30,11 @@ const personalStats = computed(() => {
   return [
     { label: 'Trips logged', value: personal.value.tripsLogged },
     { label: 'km active', value: personal.value.kmActive },
+<<<<<<< HEAD
     { label: 'kg CO2', value: personal.value.kgCo2 },
+=======
+    { label: 'kg CO₂', value: personal.value.kgCo2 },
+>>>>>>> 78d6a04e71bc50a9e0158cb76be0e9df46279b21
   ]
 })
 </script>
@@ -36,15 +44,25 @@ const personalStats = computed(() => {
     <section class="hero-section border-bottom">
       <div class="container py-4 py-lg-5">
         <h1 class="h2 fw-bold mb-2">Your impact</h1>
+<<<<<<< HEAD
         <p class="text-muted mb-4">Track CO2 savings and share stories.</p>
 
         <p v-if="loading" class="text-muted">Loading impact data...</p>
+=======
+        <p class="text-muted mb-4">Track CO₂ savings and share stories.</p>
+
+        <p v-if="loading" class="text-muted">Loading impact data…</p>
+>>>>>>> 78d6a04e71bc50a9e0158cb76be0e9df46279b21
         <p v-else-if="error" class="text-danger">{{ error }}</p>
 
         <div v-else class="row g-4">
           <div class="col-12 col-lg-6">
             <div class="stat-card p-4 h-100">
+<<<<<<< HEAD
               <p class="small text-uppercase text-muted fw-semibold mb-3">Personal CO2 tracker</p>
+=======
+              <p class="small text-uppercase text-muted fw-semibold mb-3">Personal CO₂ tracker</p>
+>>>>>>> 78d6a04e71bc50a9e0158cb76be0e9df46279b21
               <div class="progress progress-track mb-4">
                 <div
                   class="progress-bar bg-success"
@@ -83,7 +101,11 @@ const personalStats = computed(() => {
                 </div>
               </div>
               <p class="small text-muted mb-0">
+<<<<<<< HEAD
                 Shown to councils and donors as aggregate evidence - no personal data.
+=======
+                Shown to councils and donors as aggregate evidence — no personal data.
+>>>>>>> 78d6a04e71bc50a9e0158cb76be0e9df46279b21
               </p>
             </div>
           </div>

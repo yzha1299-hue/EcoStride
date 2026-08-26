@@ -1,0 +1,79 @@
+{
+  "events": [
+    {
+      "id": "active-travel-workshop",
+      "title": "Active travel workshop",
+      "type": "Active travel",
+      "suburb": "Footscray",
+      "venue": "Footscray Community Centre",
+      "club": "",
+      "day": "06",
+      "month": "Sep",
+      "weekday": "Sat",
+      "registered": 18,
+      "capacity": 30,
+      "access": ["Concession available"],
+      "status": "open"
+    },
+    {
+      "id": "club-sustainability-session",
+      "title": "Club sustainability session",
+      "type": "Club session",
+      "suburb": "Docklands",
+      "venue": "Docklands Pavilion",
+      "club": "Carlton Cycling Club",
+      "day": "07",
+      "month": "Sep",
+      "weekday": "Sun",
+      "registered": 12,
+      "capacity": 20,
+      "access": ["Concession available"],
+      "status": "waitlist"
+    },
+    {
+      "id": "family-ride-intro",
+      "title": "Family ride intro",
+      "type": "Active travel",
+      "suburb": "Albert Park",
+      "venue": "Albert Park Lake",
+      "club": "",
+      "day": "13",
+      "month": "Sep",
+      "weekday": "Sat",
+      "registered": 25,
+      "capacity": 40,
+      "access": ["Family friendly"],
+      "status": "open"
+    },
+    {
+      "id": "bike-maintenance",
+      "title": "Bike maintenance basics",
+      "type": "Active travel",
+      "suburb": "Brunswick",
+      "venue": "Brunswick Town Hall",
+      "club": "",
+      "day": "17",
+      "month": "Sep",
+      "weekday": "Wed",
+      "registered": 9,
+      "capacity": 16,
+      "access": ["Concession available", "Family friendly"],
+      "status": "open"
+    },
+    {
+      "id": "carpool-briefing",
+      "title": "Match-day carpool briefing",
+      "type": "Club session",
+      "suburb": "Richmond",
+      "venue": "Richmond Recreation Centre",
+      "club": "Richmond Netball Club",
+      "day": "18",
+      "month": "Sep",
+      "weekday": "Thu",
+      "registered": 14,
+      "capacity": 24,
+      "access": ["Family friendly"],
+      "status": "open"
+    }
+  ]
+}
