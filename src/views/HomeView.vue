@@ -1,48 +1,24 @@
 <script setup>
+import { computed } from 'vue'
 import heroImage from '../assets/hero-active-travel.svg'
 import travelImage from '../assets/card-travel.svg'
 import clubsImage from '../assets/card-clubs.svg'
 import eventsImage from '../assets/card-events.svg'
+import { useJsonData } from '../composables/useJsonData'
+import { formatNumber } from '../utils/format'
 
-const experiences = [
-  {
-    title: 'Active Travel',
-    description: 'Find safe walking and cycling routes.',
-    action: 'Open',
-    image: travelImage,
-    to: '/active-travel',
-  },
-  {
-    title: 'Club Sustainability',
-    description: 'Help clubs cut energy and travel emissions.',
-    action: 'Open',
-    image: clubsImage,
-  },
-  {
-    title: 'Events & Workshops',
-    description: 'Register for community green sessions.',
-    action: 'Open',
-    image: eventsImage,
-  },
-]
+const { data: impactData, loading, error } = useJsonData('impact')
+const { data: homeData } = useJsonData('home')
 
-const stats = [
-  { value: '1,240', label: 'Route searches' },
-  { value: '318', label: 'Event sign-ups' },
-  { value: '86', label: 'Gear shares' },
-  { value: '4,920', label: 'kg CO₂ saved' },
-]
+const cardImages = {
+  travel: travelImage,
+  clubs: clubsImage,
+  events: eventsImage,
+}
 
-const guides = [
-  {
-    title: 'For participants',
-    description: 'Families, youth, casual commuters — how to find routes and join events.',
-  },
-  {
-    title: 'For club admins',
-    description: 'Run audits, carpools, and gear sharing with low-barrier tools.',
-  },
-]
+const stats = computed(() => impactData.value?.communityTotals ?? [])
+const experiences = computed(() => homeData.value?.experiences ?? [])
+const guides = computed(() => homeData.value?.guides ?? [])
 </script>
 
 <template>
@@ -56,13 +32,13 @@ const guides = [
             </p>
             <h1 class="display-5 fw-bold mb-3">Move greener across Melbourne</h1>
             <p class="lead text-muted mb-4">
-              EcoStride helps communities take climate action through sport and active travel —
+              EcoStride helps communities take climate action through sport and active travel -
               safer routes, greener clubs, and local events.
             </p>
             <div class="d-flex flex-wrap gap-2">
               <RouterLink class="btn btn-success" to="/active-travel">Find Safe Routes</RouterLink>
-              <a class="btn btn-outline-success" href="#">Join an Event</a>
-              <a class="btn btn-light border" href="#">Club Tools</a>
+              <RouterLink class="btn btn-outline-success" to="/events">Join an Event</RouterLink>
+              <RouterLink class="btn btn-light border" to="/clubs">Club Tools</RouterLink>
             </div>
           </div>
           <div class="col-12 col-lg-6">
@@ -82,7 +58,7 @@ const guides = [
         <div class="row g-3">
           <div v-for="item in experiences" :key="item.title" class="col-12 col-md-6 col-lg-4">
             <article class="card h-100 shadow-sm">
-              <img class="card-img-top img-fluid" :src="item.image" :alt="item.title" />
+              <img class="card-img-top img-fluid" :src="cardImages[item.imageKey]" :alt="item.title" />
               <div class="card-body d-flex flex-column">
                 <h3 class="h5 fw-bold">{{ item.title }}</h3>
                 <p class="text-muted flex-grow-1">{{ item.description }}</p>
@@ -105,11 +81,16 @@ const guides = [
 
     <section class="py-5 bg-light">
       <div class="container">
-        <h2 class="h3 fw-bold mb-4">Impact snapshot</h2>
-        <div class="row g-3">
-          <div v-for="stat in stats" :key="stat.label" class="col-6 col-lg-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+          <h2 class="h3 fw-bold mb-0">Impact snapshot</h2>
+          <RouterLink class="btn btn-outline-success btn-sm" to="/impact">View impact</RouterLink>
+        </div>
+        <p v-if="loading" class="text-muted mb-0">Loading impact data...</p>
+        <p v-else-if="error" class="text-danger mb-0">{{ error }}</p>
+        <div v-else class="row g-3">
+          <div v-for="stat in stats" :key="stat.key" class="col-6 col-lg-3">
             <div class="stat-card text-center p-4 h-100">
-              <div class="display-6 fw-bold text-success">{{ stat.value }}</div>
+              <div class="display-6 fw-bold text-success">{{ formatNumber(stat.value) }}</div>
               <div class="text-muted">{{ stat.label }}</div>
             </div>
           </div>

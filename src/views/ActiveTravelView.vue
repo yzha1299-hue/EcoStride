@@ -2,7 +2,10 @@
 import { computed, ref } from 'vue'
 import mapImage from '../assets/map-routes.svg'
 import travelImage from '../assets/card-travel.svg'
+import { useJsonData } from '../composables/useJsonData'
 import { validatePostcode, validateSuburb } from '../utils/validation'
+
+const { data, loading, error } = useJsonData('activeTravel')
 
 const suburb = ref('')
 const postcode = ref('')
@@ -10,45 +13,8 @@ const travelMode = ref('Cycle')
 const showErrors = ref(false)
 const hasSearched = ref(false)
 
-const filters = ['Well-lit paths', 'Safe corridors', 'Bike parking', 'Accessible']
-
-const allRoutes = [
-  {
-    name: 'Maribyrnong River Trail',
-    detail: 'Lit path · ~2.4 km · parking nearby',
-    suburb: 'Footscray',
-    postcode: '3011',
-    modes: ['Walk', 'Cycle'],
-  },
-  {
-    name: 'Capital City Trail',
-    detail: 'Shared path · ~3.1 km · quiet streets',
-    suburb: 'Carlton',
-    postcode: '3053',
-    modes: ['Walk', 'Cycle'],
-  },
-  {
-    name: 'Main Yarra Trail',
-    detail: 'Riverside corridor · ~4.0 km · well-lit',
-    suburb: 'Richmond',
-    postcode: '3121',
-    modes: ['Walk', 'Cycle', 'Micro-mobility'],
-  },
-  {
-    name: 'Beach Road Bike Path',
-    detail: 'Coastal path · ~5.2 km · accessible',
-    suburb: 'St Kilda',
-    postcode: '3182',
-    modes: ['Cycle', 'Micro-mobility'],
-  },
-  {
-    name: 'Southern Cross Bike Hub',
-    detail: 'Secure racks · near station',
-    suburb: 'Docklands',
-    postcode: '3008',
-    modes: ['Cycle', 'Micro-mobility'],
-  },
-]
+const filters = computed(() => data.value?.filters ?? [])
+const allRoutes = computed(() => data.value?.routes ?? [])
 
 const suburbError = computed(() => validateSuburb(suburb.value))
 const postcodeError = computed(() => validatePostcode(postcode.value))
@@ -62,7 +28,7 @@ const results = computed(() => {
   const suburbQuery = suburb.value.trim().toLowerCase()
   const postcodeQuery = postcode.value.trim()
 
-  return allRoutes.filter((route) => {
+  return allRoutes.value.filter((route) => {
     const matchesPlace =
       route.suburb.toLowerCase() === suburbQuery || route.postcode === postcodeQuery
     const matchesMode = route.modes.includes(travelMode.value)
@@ -167,7 +133,10 @@ function onSearch() {
           <div class="col-12 col-lg-5">
             <h2 class="h4 fw-bold mb-3">Results</h2>
 
-            <p v-if="!hasSearched" class="text-muted">
+            <p v-if="loading" class="text-muted">Loading route data...</p>
+            <p v-else-if="error" class="text-danger">{{ error }}</p>
+
+            <p v-else-if="!hasSearched" class="text-muted">
               Enter a suburb and 4-digit postcode to see nearby routes.
             </p>
 
