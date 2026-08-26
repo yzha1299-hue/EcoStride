@@ -2,11 +2,7 @@
 import { computed, ref } from 'vue'
 import { useJsonData } from '../composables/useJsonData'
 
-<<<<<<< HEAD
 const { data, loading, error } = useJsonData('events')
-=======
-const { data, loading, error } = useJsonData('/data/events.json')
->>>>>>> 78d6a04e71bc50a9e0158cb76be0e9df46279b21
 
 const query = ref('')
 const type = ref('All')
@@ -14,15 +10,12 @@ const access = ref('Any')
 
 const events = computed(() => data.value?.events ?? [])
 
-<<<<<<< HEAD
 const typeOptions = computed(() => ['All', ...new Set(events.value.map((event) => event.type))])
 const accessOptions = computed(() => [
   'Any',
   ...new Set(events.value.flatMap((event) => event.access ?? [])),
 ])
 
-=======
->>>>>>> 78d6a04e71bc50a9e0158cb76be0e9df46279b21
 const filteredEvents = computed(() => {
   const search = query.value.trim().toLowerCase()
 
@@ -66,35 +59,19 @@ function eventMeta(event) {
               v-model="query"
               class="form-control"
               type="search"
-<<<<<<< HEAD
               placeholder="Workshop, suburb, club..."
-=======
-              placeholder="Workshop, suburb, club…"
->>>>>>> 78d6a04e71bc50a9e0158cb76be0e9df46279b21
             />
           </div>
           <div class="col-12 col-sm-6 col-md-3">
             <label class="form-label" for="eventType">Type</label>
             <select id="eventType" v-model="type" class="form-select">
-<<<<<<< HEAD
               <option v-for="option in typeOptions" :key="option">{{ option }}</option>
-=======
-              <option>All</option>
-              <option>Active travel</option>
-              <option>Club session</option>
->>>>>>> 78d6a04e71bc50a9e0158cb76be0e9df46279b21
             </select>
           </div>
           <div class="col-12 col-sm-6 col-md-3">
             <label class="form-label" for="eventAccess">Access</label>
             <select id="eventAccess" v-model="access" class="form-select">
-<<<<<<< HEAD
               <option v-for="option in accessOptions" :key="option">{{ option }}</option>
-=======
-              <option>Any</option>
-              <option>Concession available</option>
-              <option>Family friendly</option>
->>>>>>> 78d6a04e71bc50a9e0158cb76be0e9df46279b21
             </select>
           </div>
           <div class="col-12 col-md-2">
@@ -106,11 +83,7 @@ function eventMeta(event) {
 
     <section class="py-4 py-lg-5">
       <div class="container">
-<<<<<<< HEAD
         <p v-if="loading" class="text-muted">Loading events...</p>
-=======
-        <p v-if="loading" class="text-muted">Loading events…</p>
->>>>>>> 78d6a04e71bc50a9e0158cb76be0e9df46279b21
         <p v-else-if="error" class="text-danger">{{ error }}</p>
         <p v-else-if="!filteredEvents.length" class="text-muted">No events match your filters.</p>
 

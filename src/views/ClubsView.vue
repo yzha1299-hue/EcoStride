@@ -3,11 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useJsonData } from '../composables/useJsonData'
 import { formatNumber } from '../utils/format'
 
-<<<<<<< HEAD
 const { data, loading, error } = useJsonData('clubs')
-=======
-const { data, loading, error } = useJsonData('/data/clubs.json')
->>>>>>> 78d6a04e71bc50a9e0158cb76be0e9df46279b21
 const selectedClubId = ref('')
 
 const clubs = computed(() => data.value?.clubs ?? [])
@@ -36,11 +32,7 @@ const clubStats = computed(() => {
   return [
     { label: 'Audits done', value: selectedClub.value.auditsDone },
     { label: 'Carpool seats', value: selectedClub.value.carpoolSeats },
-<<<<<<< HEAD
     { label: 'kg CO2', value: selectedClub.value.kgCo2 },
-=======
-    { label: 'kg CO₂', value: selectedClub.value.kgCo2 },
->>>>>>> 78d6a04e71bc50a9e0158cb76be0e9df46279b21
   ]
 })
 </script>
@@ -77,11 +69,7 @@ const clubStats = computed(() => {
 
     <section class="py-4 py-lg-5">
       <div class="container">
-<<<<<<< HEAD
         <p v-if="loading" class="text-muted">Loading club tools...</p>
-=======
-        <p v-if="loading" class="text-muted">Loading club tools…</p>
->>>>>>> 78d6a04e71bc50a9e0158cb76be0e9df46279b21
         <p v-else-if="error" class="text-danger">{{ error }}</p>
 
         <template v-else>
