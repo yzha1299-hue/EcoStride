@@ -4,6 +4,8 @@ import ActiveTravelView from '../views/ActiveTravelView.vue'
 import ClubsView from '../views/ClubsView.vue'
 import EventsView from '../views/EventsView.vue'
 import ImpactView from '../views/ImpactView.vue'
+import FirebaseSigninView from '../views/FirebaseSigninView.vue'
+import FirebaseRegisterView from '../views/FirebaseRegisterView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -32,6 +34,16 @@ const router = createRouter({
       path: '/impact',
       name: 'impact',
       component: ImpactView,
+    },
+    {
+      path: '/FireLogin',
+      name: 'FireLogin',
+      component: FirebaseSigninView,
+    },
+    {
+      path: '/FireRegister',
+      name: 'FireRegister',
+      component: FirebaseRegisterView,
     },
   ],
   scrollBehavior() {

@@ -1,5 +1,4 @@
 <script setup>
-import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
@@ -12,17 +11,9 @@ const navItems = [
   { label: 'Events', to: '/events' },
   { label: 'Impact', to: '/impact' },
   { label: 'Help', to: '#' },
+  { label: 'Sign in', to: '/FireLogin' },
+  { label: 'Register', to: '/FireRegister' },
 ]
-
-const headerAction = computed(() => {
-  if (route.path === '/clubs') {
-    return 'Club admin'
-  }
-  if (route.path === '/events') {
-    return 'My registrations'
-  }
-  return 'Sign in'
-})
 
 function isCurrent(item) {
   return item.to !== '#' && route.path === item.to
@@ -51,7 +42,7 @@ function isCurrent(item) {
         </button>
 
         <div id="primaryNav" class="collapse navbar-collapse">
-          <ul class="navbar-nav ms-auto me-lg-3 mb-2 mb-lg-0">
+          <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
             <li v-for="item in navItems" :key="item.label" class="nav-item">
               <RouterLink
                 v-if="item.to !== '#'"
@@ -64,7 +55,6 @@ function isCurrent(item) {
               <a v-else class="nav-link" href="#" aria-disabled="true">{{ item.label }}</a>
             </li>
           </ul>
-          <a class="btn btn-outline-success btn-sm" href="#">{{ headerAction }}</a>
         </div>
       </div>
     </nav>
