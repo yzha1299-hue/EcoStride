@@ -1,22 +1,43 @@
 <script setup>
-import { useRoute } from 'vue-router'
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuth } from '../auth/authState'
 
 const route = useRoute()
+const router = useRouter()
+const { isAuthenticated, isClubMember, roleLabel, user, logout } = useAuth()
 
-const navItems = [
-  { label: 'Home', to: '/' },
-  { label: 'Active Travel', to: '/active-travel' },
-  { label: 'Clubs', to: '/clubs' },
-  { label: 'Gear', to: '#' },
-  { label: 'Events', to: '/events' },
-  { label: 'Impact', to: '/impact' },
-  { label: 'Help', to: '#' },
-  { label: 'Sign in', to: '/FireLogin' },
-  { label: 'Register', to: '/FireRegister' },
-]
+const navItems = computed(() => {
+  const items = [
+    { label: 'Home', to: '/' },
+    { label: 'Active Travel', to: '/active-travel' },
+  ]
+
+  if (!isAuthenticated.value || isClubMember.value) {
+    items.push({ label: 'Clubs', to: '/clubs' })
+  }
+
+  items.push(
+    { label: 'Gear', to: '#' },
+    { label: 'Events', to: '/events' },
+    { label: 'Impact', to: '/impact' },
+    { label: 'Help', to: '#' },
+  )
+
+  if (!isAuthenticated.value) {
+    items.push({ label: 'Sign in', to: '/FireLogin' }, { label: 'Register', to: '/FireRegister' })
+  }
+
+  return items
+})
 
 function isCurrent(item) {
   return item.to !== '#' && route.path === item.to
+}
+
+async function signOutUser() {
+  await logout()
+  router.push('/')
 }
 </script>
 
@@ -53,6 +74,14 @@ function isCurrent(item) {
                 {{ item.label }}
               </RouterLink>
               <a v-else class="nav-link" href="#" aria-disabled="true">{{ item.label }}</a>
+            </li>
+            <li v-if="isAuthenticated" class="nav-item d-flex align-items-center">
+              <span class="nav-link disabled small">{{ roleLabel }} · {{ user.email }}</span>
+            </li>
+            <li v-if="isAuthenticated" class="nav-item">
+              <button class="nav-link btn btn-link" type="button" @click="signOutUser">
+                Sign out
+              </button>
             </li>
           </ul>
         </div>

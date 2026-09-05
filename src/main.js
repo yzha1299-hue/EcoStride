@@ -6,6 +6,7 @@ import { createApp } from 'vue'
 import { initializeApp } from 'firebase/app'
 import App from './App.vue'
 import router from './router'
+import { initAuth } from './auth/authState'
 
 const firebaseConfig = {
   apiKey: 'AIzaSyAFueDm0AmMuT0pJDazOi4VOLBlqHvDJ9A',
@@ -17,6 +18,7 @@ const firebaseConfig = {
 }
 
 initializeApp(firebaseConfig)
+initAuth()
 
 const app = createApp(App)
 
