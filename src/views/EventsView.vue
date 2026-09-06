@@ -1,8 +1,12 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useJsonData } from '../composables/useJsonData'
+import { useRatings } from '../composables/useRatings'
+import { useAuth } from '../auth/authState'
+import StarRating from '../components/StarRating.vue'
 
 const { data, loading, error } = useJsonData('events')
+const { isAuthenticated } = useAuth()
 
 const query = ref('')
 const type = ref('All')
@@ -42,6 +46,20 @@ function eventMeta(event) {
     waitlist ? ` · ${waitlist}` : ''
   }`
 }
+
+const ratingsByEvent = reactive({})
+
+watch(
+  events,
+  (list) => {
+    list.forEach((event) => {
+      if (!ratingsByEvent[event.id]) {
+        ratingsByEvent[event.id] = useRatings('eventRatings', event.id)
+      }
+    })
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -102,6 +120,35 @@ function eventMeta(event) {
                   <div class="flex-grow-1">
                     <h2 class="h5 fw-bold mb-1">{{ event.title }}</h2>
                     <p class="small text-muted mb-0">{{ eventMeta(event) }}</p>
+
+                    <div v-if="ratingsByEvent[event.id]" class="mt-2">
+                      <div class="d-flex align-items-center gap-2">
+                        <StarRating :value="ratingsByEvent[event.id].average" readonly />
+                        <span class="small text-muted">
+                          {{ ratingsByEvent[event.id].average.toFixed(1) }}
+                          ({{ ratingsByEvent[event.id].count }}
+                          rating{{ ratingsByEvent[event.id].count === 1 ? '' : 's' }})
+                        </span>
+                      </div>
+
+                      <div v-if="isAuthenticated" class="d-flex align-items-center gap-2 mt-1">
+                        <span class="small text-muted">Your rating:</span>
+                        <StarRating
+                          :value="ratingsByEvent[event.id].userRating"
+                          :disabled="ratingsByEvent[event.id].submitting"
+                          @rate="(value) => ratingsByEvent[event.id].submit(value)"
+                        />
+                        <span
+                          v-if="ratingsByEvent[event.id].feedback"
+                          class="small text-success"
+                        >
+                          {{ ratingsByEvent[event.id].feedback }}
+                        </span>
+                      </div>
+                      <p v-else class="small text-muted mt-1 mb-0">
+                        <RouterLink to="/FireLogin">Sign in</RouterLink> to rate this event.
+                      </p>
+                    </div>
                   </div>
                   <a
                     class="btn btn-sm align-self-start"

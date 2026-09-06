@@ -3,9 +3,11 @@ import HomeView from '../views/HomeView.vue'
 import ActiveTravelView from '../views/ActiveTravelView.vue'
 import ClubsView from '../views/ClubsView.vue'
 import EventsView from '../views/EventsView.vue'
+import ManageEventsView from '../views/ManageEventsView.vue'
 import ImpactView from '../views/ImpactView.vue'
 import FirebaseSigninView from '../views/FirebaseSigninView.vue'
 import FirebaseRegisterView from '../views/FirebaseRegisterView.vue'
+import ForgotPasswordView from '../views/ForgotPasswordView.vue'
 import UnauthorizedView from '../views/UnauthorizedView.vue'
 import { authReady, role, ROLES, user } from '../auth/authState'
 
@@ -35,6 +37,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/events/manage',
+      name: 'events-manage',
+      component: ManageEventsView,
+      meta: { requiresAuth: true, roles: [ROLES.CLUB_MEMBER] },
+    },
+    {
       path: '/impact',
       name: 'impact',
       component: ImpactView,
@@ -49,6 +57,11 @@ const router = createRouter({
       path: '/FireRegister',
       name: 'FireRegister',
       component: FirebaseRegisterView,
+    },
+    {
+      path: '/forgot-password',
+      name: 'forgot-password',
+      component: ForgotPasswordView,
     },
     {
       path: '/unauthorized',

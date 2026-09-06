@@ -17,6 +17,10 @@ const navItems = computed(() => {
     items.push({ label: 'Clubs', to: '/clubs' })
   }
 
+  if (isClubMember.value) {
+    items.push({ label: 'Manage events', to: '/events/manage' })
+  }
+
   items.push(
     { label: 'Gear', to: '#' },
     { label: 'Events', to: '/events' },

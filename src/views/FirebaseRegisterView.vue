@@ -5,10 +5,25 @@
       <p class="text-muted mb-4">Choose a role. This controls which pages you can open after sign in.</p>
 
       <p>
-        <input v-model="email" class="form-control" type="text" placeholder="Email" />
+        <input v-model.trim="email" class="form-control" type="email" placeholder="Email" autocomplete="email" />
       </p>
       <p>
-        <input v-model="password" class="form-control" type="password" placeholder="Password" />
+        <input
+          v-model="password"
+          class="form-control"
+          type="password"
+          placeholder="Password (min. 6 characters)"
+          autocomplete="new-password"
+        />
+      </p>
+      <p>
+        <input
+          v-model="confirmPassword"
+          class="form-control"
+          type="password"
+          placeholder="Confirm password"
+          autocomplete="new-password"
+        />
       </p>
       <p>
         <select v-model="selectedRole" class="form-select">
@@ -17,7 +32,9 @@
         </select>
       </p>
       <p>
-        <button class="btn btn-success" type="button" @click="register">Save to Firebase</button>
+        <button class="btn btn-success" type="button" :disabled="isSubmitting" @click="register">
+          {{ isSubmitting ? 'Creating account…' : 'Create account' }}
+        </button>
       </p>
       <p v-if="errorMessage" class="text-danger small mb-0">{{ errorMessage }}</p>
     </div>
@@ -26,38 +43,53 @@
 
 <script setup>
 import { ref } from 'vue'
-import {
-  createUserWithEmailAndPassword,
-  getAuth,
-  signOut,
-  updateProfile,
-} from 'firebase/auth'
+import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth'
 import { useRouter } from 'vue-router'
-import { persistRole, ROLES } from '../auth/authState'
+import { createUserProfile, ROLES, setRole } from '../auth/authState'
 
 const email = ref('')
 const password = ref('')
+const confirmPassword = ref('')
 const selectedRole = ref(ROLES.PARTICIPANT)
 const errorMessage = ref('')
+const isSubmitting = ref(false)
 const router = useRouter()
 const auth = getAuth()
 
+function validate() {
+  if (!email.value || !password.value) {
+    return 'Please enter an email and password.'
+  }
+  if (password.value.length < 6) {
+    return 'Password must be at least 6 characters.'
+  }
+  if (password.value !== confirmPassword.value) {
+    return 'Passwords do not match.'
+  }
+  return ''
+}
+
 const register = () => {
   errorMessage.value = ''
+
+  const validationError = validate()
+  if (validationError) {
+    errorMessage.value = validationError
+    return
+  }
+
+  isSubmitting.value = true
   createUserWithEmailAndPassword(auth, email.value, password.value)
-    .then((data) => {
-      return updateProfile(data.user, { displayName: selectedRole.value }).then(() => {
-        persistRole(data.user.uid, selectedRole.value)
-        console.log('Firebase Register Successful!')
-        return signOut(auth)
-      })
-    })
+    .then((data) => createUserProfile(data.user, selectedRole.value))
     .then(() => {
-      router.push('/FireLogin')
+      setRole(selectedRole.value)
+      router.push('/')
     })
     .catch((error) => {
-      console.log(error.code)
       errorMessage.value = error.message
+    })
+    .finally(() => {
+      isSubmitting.value = false
     })
 }
 </script>
