@@ -14,11 +14,27 @@ export const ROLE_LABELS = {
 
 export const user = ref(null)
 export const role = ref('')
+// Whether the signed-in user has a users/{uid} Firestore document yet. Accounts
+// created before the Firestore-backed role system existed (or otherwise missing
+// a profile) have no doc, so the router sends them to /complete-profile instead
+// of silently defaulting them to "participant".
+export const hasProfile = ref(false)
 
 let resolveAuthReady
 export const authReady = new Promise((resolve) => {
   resolveAuthReady = resolve
 })
+
+async function fetchProfile(firebaseUser) {
+  const snapshot = await getDoc(doc(getFirestore(), 'users', firebaseUser.uid))
+  const storedRole = snapshot.data()?.role
+  const resolvedRole =
+    storedRole === ROLES.PARTICIPANT || storedRole === ROLES.CLUB_MEMBER
+      ? storedRole
+      : ROLES.PARTICIPANT
+
+  return { role: resolvedRole, exists: snapshot.exists() }
+}
 
 // The user's role lives in Firestore (users/{uid}), not on the client. Firestore
 // security rules let a user create that document once, for themselves, with a
@@ -29,13 +45,22 @@ export async function resolveRole(firebaseUser) {
     return ''
   }
 
-  const snapshot = await getDoc(doc(getFirestore(), 'users', firebaseUser.uid))
-  const storedRole = snapshot.data()?.role
+  const { role: resolvedRole } = await fetchProfile(firebaseUser)
+  return resolvedRole
+}
 
-  if (storedRole === ROLES.PARTICIPANT || storedRole === ROLES.CLUB_MEMBER) {
-    return storedRole
+// Refreshes both role and hasProfile from Firestore in a single read, and
+// updates the shared reactive state used by the router guard.
+export async function syncProfileState(firebaseUser) {
+  if (!firebaseUser) {
+    role.value = ''
+    hasProfile.value = false
+    return
   }
-  return ROLES.PARTICIPANT
+
+  const { role: resolvedRole, exists } = await fetchProfile(firebaseUser)
+  role.value = resolvedRole
+  hasProfile.value = exists
 }
 
 export async function createUserProfile(firebaseUser, selectedRole) {
@@ -44,6 +69,7 @@ export async function createUserProfile(firebaseUser, selectedRole) {
     role: selectedRole,
     createdAt: serverTimestamp(),
   })
+  hasProfile.value = true
 }
 
 export function setRole(nextRole) {
@@ -54,7 +80,7 @@ export function initAuth() {
   const auth = getAuth()
   onAuthStateChanged(auth, async (firebaseUser) => {
     user.value = firebaseUser
-    role.value = await resolveRole(firebaseUser)
+    await syncProfileState(firebaseUser)
     resolveAuthReady()
   })
 }
@@ -71,6 +97,7 @@ export function useAuth() {
   return {
     user,
     role,
+    hasProfile,
     isAuthenticated: computed(() => !!user.value),
     isClubMember: computed(() => role.value === ROLES.CLUB_MEMBER),
     isParticipant: computed(() => role.value === ROLES.PARTICIPANT),

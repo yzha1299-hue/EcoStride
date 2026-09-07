@@ -8,8 +8,9 @@ import ImpactView from '../views/ImpactView.vue'
 import FirebaseSigninView from '../views/FirebaseSigninView.vue'
 import FirebaseRegisterView from '../views/FirebaseRegisterView.vue'
 import ForgotPasswordView from '../views/ForgotPasswordView.vue'
+import CompleteProfileView from '../views/CompleteProfileView.vue'
 import UnauthorizedView from '../views/UnauthorizedView.vue'
-import { authReady, role, ROLES, user } from '../auth/authState'
+import { authReady, hasProfile, role, ROLES, user } from '../auth/authState'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -64,6 +65,12 @@ const router = createRouter({
       component: ForgotPasswordView,
     },
     {
+      path: '/complete-profile',
+      name: 'complete-profile',
+      component: CompleteProfileView,
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/unauthorized',
       name: 'unauthorized',
       component: UnauthorizedView,
@@ -82,6 +89,10 @@ router.beforeEach(async (to) => {
       name: 'FireLogin',
       query: { redirect: to.fullPath },
     }
+  }
+
+  if (user.value && !hasProfile.value && to.name !== 'complete-profile') {
+    return { name: 'complete-profile' }
   }
 
   if (to.meta.roles && !to.meta.roles.includes(role.value)) {

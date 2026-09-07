@@ -46,6 +46,7 @@ import { ref } from 'vue'
 import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth'
 import { useRouter } from 'vue-router'
 import { createUserProfile, ROLES, setRole } from '../auth/authState'
+import { validateEmail } from '../utils/validation'
 
 const email = ref('')
 const password = ref('')
@@ -57,8 +58,12 @@ const router = useRouter()
 const auth = getAuth()
 
 function validate() {
-  if (!email.value || !password.value) {
-    return 'Please enter an email and password.'
+  const emailError = validateEmail(email.value)
+  if (emailError) {
+    return emailError
+  }
+  if (!password.value) {
+    return 'Please enter a password.'
   }
   if (password.value.length < 6) {
     return 'Password must be at least 6 characters.'

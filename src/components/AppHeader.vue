@@ -13,9 +13,7 @@ const navItems = computed(() => {
     { label: 'Active Travel', to: '/active-travel' },
   ]
 
-  if (!isAuthenticated.value || isClubMember.value) {
-    items.push({ label: 'Clubs', to: '/clubs' })
-  }
+  items.push({ label: 'Clubs', to: '/clubs' })
 
   if (isClubMember.value) {
     items.push({ label: 'Manage events', to: '/events/manage' })

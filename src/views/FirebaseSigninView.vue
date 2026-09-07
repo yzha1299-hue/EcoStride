@@ -31,7 +31,8 @@
 import { ref } from 'vue'
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth'
 import { useRoute, useRouter } from 'vue-router'
-import { resolveRole, setRole } from '../auth/authState'
+import { syncProfileState } from '../auth/authState'
+import { validateEmail } from '../utils/validation'
 
 const email = ref('')
 const password = ref('')
@@ -43,11 +44,21 @@ const auth = getAuth()
 
 const signin = () => {
   errorMessage.value = ''
+
+  const emailError = validateEmail(email.value)
+  if (emailError) {
+    errorMessage.value = emailError
+    return
+  }
+  if (!password.value) {
+    errorMessage.value = 'Please enter your password.'
+    return
+  }
+
   isSubmitting.value = true
   signInWithEmailAndPassword(auth, email.value, password.value)
     .then(async (data) => {
-      const nextRole = await resolveRole(data.user)
-      setRole(nextRole)
+      await syncProfileState(data.user)
       const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
       router.push(redirect)
     })

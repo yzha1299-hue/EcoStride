@@ -103,6 +103,9 @@ watch(
       <div class="container">
         <p v-if="loading" class="text-muted">Loading events...</p>
         <p v-else-if="error" class="text-danger">{{ error }}</p>
+        <p v-else-if="!filteredEvents.length && query" class="text-muted">
+          No events match "{{ query }}".
+        </p>
         <p v-else-if="!filteredEvents.length" class="text-muted">No events match your filters.</p>
 
         <div v-else class="d-flex flex-column gap-3">

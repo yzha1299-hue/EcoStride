@@ -1,3 +1,17 @@
+export function validateEmail(value) {
+  const email = value.trim()
+
+  if (!email) {
+    return 'Please enter an email address.'
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return 'Please enter a valid email address.'
+  }
+
+  return ''
+}
+
 export function validateSuburb(value) {
   const suburb = value.trim()
 

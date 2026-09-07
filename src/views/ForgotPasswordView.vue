@@ -24,6 +24,7 @@
 <script setup>
 import { ref } from 'vue'
 import { resetPassword } from '../auth/authState'
+import { validateEmail } from '../utils/validation'
 
 const email = ref('')
 const errorMessage = ref('')
@@ -34,8 +35,9 @@ const submit = () => {
   errorMessage.value = ''
   successMessage.value = ''
 
-  if (!email.value) {
-    errorMessage.value = 'Please enter your email.'
+  const emailError = validateEmail(email.value)
+  if (emailError) {
+    errorMessage.value = emailError
     return
   }
 
