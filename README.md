@@ -59,6 +59,24 @@ firebase deploy --only hosting,firestore:rules
 
 The app uses HTML5 history routing, so `firebase.json` rewrites every path that is not a real file to `index.html`. Without it, opening or refreshing a deep link such as `/events` returns a 404. Hashed files under `/assets` are cached for a year; `index.html` is never cached so new deploys take effect immediately.
 
+### API Worker (Cloudflare Workers)
+
+Server-side logic lives in `worker/` and is deployed separately from the site. It verifies the caller's Firebase ID token itself (with `jose`) and talks to Firestore over its REST API using a service account, because `firebase-admin` does not run on Workers.
+
+One-time setup:
+
+1. **Service account with least privilege.** In Google Cloud console for project `ecostride-82c87`: IAM & Admin > Service Accounts > Create, name it e.g. `ecostride-worker`, and grant only the **Cloud Datastore User** role. Then Keys > Add key > JSON. Keep the file outside the repo.
+2. `cd worker && npm install && npx wrangler login`
+3. Store the key as a secret (paste the whole JSON on one line): `npx wrangler secret put FIREBASE_SERVICE_ACCOUNT`
+4. `npm run deploy` and note the URL it prints (e.g. `https://ecostride-api.<subdomain>.workers.dev`).
+5. Set `VITE_API_BASE_URL` in the root `.env` to that URL, then rebuild and redeploy the site. The URL is also inserted into the page's Content-Security-Policy at build time.
+
+Local development: copy `worker/.dev.vars.example` to `worker/.dev.vars` (git-ignored), then `npm run dev` in `worker/`, and point `VITE_API_BASE_URL` at `http://localhost:8787`.
+
+Check it works: sign in on the dev site, open the browser console and run `await ecoApi.me()`. It should return your uid, email, whether it's verified, and your role read from Firestore.
+
+Allowed browser origins are listed in `ALLOWED_ORIGINS` in `worker/wrangler.toml`.
+
 ### Lint with [ESLint](https://eslint.org/)
 
 ```sh

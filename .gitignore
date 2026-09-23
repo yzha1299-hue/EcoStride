@@ -42,5 +42,9 @@ __screenshots__/
 # Vite
 *.timestamp-*-*.mjs
 
+# Cloudflare Worker
+.dev.vars
+.wrangler
+
 # Firebase deploy cache
 .firebase/

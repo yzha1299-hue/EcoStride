@@ -14,7 +14,8 @@
       on email/password sign-in - not something this app's own code references.
       style-src allows 'unsafe-inline' only because Vite's dev server hot-injects
       CSS as <style> tags (production builds use an external stylesheet instead);
-      connect-src is scoped to this app's own Firebase/Google endpoints only, so
+      connect-src is scoped to this app's own Firebase/Google endpoints and its
+      API Worker (filled in by Vite from VITE_API_BASE_URL at build time), so
       injected script still can't exfiltrate data elsewhere.
     -->
     <meta
@@ -26,7 +27,7 @@
         style-src 'self' 'unsafe-inline';
         img-src 'self' data:;
         font-src 'self' data:;
-        connect-src 'self' ws: wss: https://*.googleapis.com https://*.firebaseio.com https://www.google.com;
+        connect-src 'self' ws: wss: https://*.googleapis.com https://*.firebaseio.com https://www.google.com %VITE_API_BASE_URL%;
         frame-src 'self' https://*.firebaseapp.com https://www.google.com https://recaptcha.google.com;
         object-src 'none';
         base-uri 'self';

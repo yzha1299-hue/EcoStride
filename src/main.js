@@ -22,6 +22,13 @@ initializeApp(firebaseConfig)
 getFirestore()
 initAuth()
 
+if (import.meta.env.DEV) {
+  // Dev-only hook for checking the API from the browser console: await ecoApi.me()
+  import('./api/client').then(({ getMe }) => {
+    window.ecoApi = { me: getMe }
+  })
+}
+
 const app = createApp(App)
 
 app.use(router)

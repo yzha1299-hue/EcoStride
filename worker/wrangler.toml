@@ -1,0 +1,13 @@
+name = "ecostride-api"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[observability]
+enabled = true
+
+[vars]
+FIREBASE_PROJECT_ID = "ecostride-82c87"
+ALLOWED_ORIGINS = "https://ecostride-82c87.web.app,https://ecostride-82c87.firebaseapp.com,http://localhost:5173,http://localhost:5175"
+
+# Secrets (never in this file) - set with `npx wrangler secret put <NAME>`:
+#   FIREBASE_SERVICE_ACCOUNT  full service-account JSON key, as one line
