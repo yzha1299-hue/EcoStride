@@ -41,3 +41,6 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# Firebase deploy cache
+.firebase/

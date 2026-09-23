@@ -30,7 +30,7 @@
             {{ isSubmitting ? 'Saving…' : 'Save role' }}
           </button>
         </p>
-        <p v-if="errorMessage" class="text-danger small mb-0">{{ errorMessage }}</p>
+        <p class="text-danger small mb-0" role="alert">{{ errorMessage }}</p>
       </template>
     </div>
   </div>
@@ -39,10 +39,12 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { doc, getDoc, getFirestore } from 'firebase/firestore'
-import { useRouter } from 'vue-router'
-import { createUserProfile, ROLES, setRole, user } from '../auth/authState'
+import { useRoute, useRouter } from 'vue-router'
+import { createUserProfile, redirectTarget, ROLES, setRole, user } from '../auth/authState'
+import { authErrorMessage } from '../auth/authErrors'
 
 const router = useRouter()
+const route = useRoute()
 const selectedRole = ref(ROLES.PARTICIPANT)
 const errorMessage = ref('')
 const isSubmitting = ref(false)
@@ -61,10 +63,10 @@ function submit() {
   createUserProfile(user.value, selectedRole.value)
     .then(() => {
       setRole(selectedRole.value)
-      router.push('/')
+      router.push(redirectTarget(route.query))
     })
     .catch((error) => {
-      errorMessage.value = error.message
+      errorMessage.value = authErrorMessage(error)
     })
     .finally(() => {
       isSubmitting.value = false

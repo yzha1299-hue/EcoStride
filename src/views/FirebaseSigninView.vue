@@ -19,7 +19,13 @@
           {{ isSubmitting ? 'Signing in…' : 'Sign in' }}
         </button>
       </p>
-      <p v-if="errorMessage" class="text-danger small mb-0">{{ errorMessage }}</p>
+      <p class="text-danger small mb-0" role="alert">{{ errorMessage }}</p>
+      <div class="d-flex align-items-center gap-2 my-3 text-muted small">
+        <hr class="flex-grow-1 m-0" />
+        <span>or</span>
+        <hr class="flex-grow-1 m-0" />
+      </div>
+      <GoogleSignInButton @error="errorMessage = $event" />
       <p class="small mt-3 mb-0">
         <RouterLink to="/forgot-password">Forgot password?</RouterLink>
       </p>
@@ -31,7 +37,9 @@
 import { ref } from 'vue'
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth'
 import { useRoute, useRouter } from 'vue-router'
-import { syncProfileState } from '../auth/authState'
+import { redirectTarget, syncProfileState } from '../auth/authState'
+import { authErrorMessage } from '../auth/authErrors'
+import GoogleSignInButton from '../components/GoogleSignInButton.vue'
 import { validateEmail } from '../utils/validation'
 
 const email = ref('')
@@ -59,11 +67,10 @@ const signin = () => {
   signInWithEmailAndPassword(auth, email.value, password.value)
     .then(async (data) => {
       await syncProfileState(data.user)
-      const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
-      router.push(redirect)
+      router.push(redirectTarget(route.query))
     })
     .catch((error) => {
-      errorMessage.value = error.message
+      errorMessage.value = authErrorMessage(error)
     })
     .finally(() => {
       isSubmitting.value = false

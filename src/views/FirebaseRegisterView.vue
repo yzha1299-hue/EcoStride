@@ -36,7 +36,14 @@
           {{ isSubmitting ? 'Creating account…' : 'Create account' }}
         </button>
       </p>
-      <p v-if="errorMessage" class="text-danger small mb-0">{{ errorMessage }}</p>
+      <p class="text-danger small mb-0" role="alert">{{ errorMessage }}</p>
+      <div class="d-flex align-items-center gap-2 my-3 text-muted small">
+        <hr class="flex-grow-1 m-0" />
+        <span>or</span>
+        <hr class="flex-grow-1 m-0" />
+      </div>
+      <GoogleSignInButton @error="errorMessage = $event" />
+      <p class="small text-muted mt-2 mb-0">You'll choose your role after signing in with Google.</p>
     </div>
   </div>
 </template>
@@ -45,7 +52,9 @@
 import { ref } from 'vue'
 import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth'
 import { useRouter } from 'vue-router'
-import { createUserProfile, ROLES, setRole } from '../auth/authState'
+import { createUserProfile, ROLES, sendVerification, setRole } from '../auth/authState'
+import { authErrorMessage } from '../auth/authErrors'
+import GoogleSignInButton from '../components/GoogleSignInButton.vue'
 import { validateEmail } from '../utils/validation'
 
 const email = ref('')
@@ -88,10 +97,13 @@ const register = () => {
     .then((data) => createUserProfile(data.user, selectedRole.value))
     .then(() => {
       setRole(selectedRole.value)
+      // Non-blocking: the account works without verification; only the
+      // email-sending features require it, and the banner offers a resend.
+      sendVerification().catch(() => {})
       router.push('/')
     })
     .catch((error) => {
-      errorMessage.value = error.message
+      errorMessage.value = authErrorMessage(error)
     })
     .finally(() => {
       isSubmitting.value = false

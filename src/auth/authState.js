@@ -1,5 +1,13 @@
 import { computed, ref } from 'vue'
-import { getAuth, onAuthStateChanged, sendPasswordResetEmail, signOut } from 'firebase/auth'
+import {
+  getAuth,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  signInWithPopup,
+  signOut,
+} from 'firebase/auth'
 import { doc, getDoc, getFirestore, serverTimestamp, setDoc } from 'firebase/firestore'
 
 export const ROLES = {
@@ -19,6 +27,9 @@ export const role = ref('')
 // a profile) have no doc, so the router sends them to /complete-profile instead
 // of silently defaulting them to "participant".
 export const hasProfile = ref(false)
+// Mirrors user.emailVerified. Firebase only refreshes that flag on reload(), so
+// it is kept in its own ref that refreshVerification() can update reactively.
+export const emailVerified = ref(false)
 
 let resolveAuthReady
 export const authReady = new Promise((resolve) => {
@@ -80,6 +91,7 @@ export function initAuth() {
   const auth = getAuth()
   onAuthStateChanged(auth, async (firebaseUser) => {
     user.value = firebaseUser
+    emailVerified.value = !!firebaseUser?.emailVerified
     await syncProfileState(firebaseUser)
     resolveAuthReady()
   })
@@ -93,11 +105,46 @@ export async function resetPassword(email) {
   await sendPasswordResetEmail(getAuth(), email)
 }
 
+// Google accounts arrive with a verified email. A first-time Google user has no
+// users/{uid} document, so the router guard sends them to /complete-profile.
+export async function signInWithGoogle() {
+  const provider = new GoogleAuthProvider()
+  provider.setCustomParameters({ prompt: 'select_account' })
+  const { user: firebaseUser } = await signInWithPopup(getAuth(), provider)
+  user.value = firebaseUser
+  emailVerified.value = firebaseUser.emailVerified
+  await syncProfileState(firebaseUser)
+  return firebaseUser
+}
+
+export async function sendVerification() {
+  await sendEmailVerification(getAuth().currentUser)
+}
+
+export async function refreshVerification() {
+  const current = getAuth().currentUser
+  if (!current) {
+    return false
+  }
+  await current.reload()
+  emailVerified.value = current.emailVerified
+  return current.emailVerified
+}
+
+export function redirectTarget(query) {
+  const redirect = query.redirect
+  // Only same-app paths, so ?redirect= can't bounce users to another site.
+  return typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')
+    ? redirect
+    : '/'
+}
+
 export function useAuth() {
   return {
     user,
     role,
     hasProfile,
+    emailVerified,
     isAuthenticated: computed(() => !!user.value),
     isClubMember: computed(() => role.value === ROLES.CLUB_MEMBER),
     isParticipant: computed(() => role.value === ROLES.PARTICIPANT),

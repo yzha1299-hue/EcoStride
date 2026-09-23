@@ -42,6 +42,23 @@ npm run dev
 npm run build
 ```
 
+### Deploy to Firebase Hosting
+
+One-time setup:
+
+1. Install the CLI and sign in: `npm install -g firebase-tools`, then `firebase login`.
+2. In the Firebase console, enable **Authentication > Sign-in method > Google**.
+3. Check **Authentication > Settings > Authorized domains** lists `ecostride-82c87.web.app`, `ecostride-82c87.firebaseapp.com` and `localhost` (Firebase adds these by default).
+
+Each deploy:
+
+```sh
+npm run build
+firebase deploy --only hosting,firestore:rules
+```
+
+The app uses HTML5 history routing, so `firebase.json` rewrites every path that is not a real file to `index.html`. Without it, opening or refreshing a deep link such as `/events` returns a 404. Hashed files under `/assets` are cached for a year; `index.html` is never cached so new deploys take effect immediately.
+
 ### Lint with [ESLint](https://eslint.org/)
 
 ```sh

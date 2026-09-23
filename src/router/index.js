@@ -92,7 +92,9 @@ router.beforeEach(async (to) => {
   }
 
   if (user.value && !hasProfile.value && to.name !== 'complete-profile') {
-    return { name: 'complete-profile' }
+    // Keep where the user was heading so they land there once a role is chosen.
+    const redirect = to.name === 'FireLogin' || to.name === 'FireRegister' ? undefined : to.fullPath
+    return { name: 'complete-profile', query: redirect ? { redirect } : {} }
   }
 
   if (to.meta.roles && !to.meta.roles.includes(role.value)) {
