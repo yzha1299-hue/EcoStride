@@ -3,8 +3,10 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { user } from '../auth/authState'
 import { useEvents } from '../composables/useEvents'
+import { useTable } from '../composables/useTable'
 import { formatEventDay, formatTimeRange } from '../utils/format'
 import { EVENT_STATE, eventState } from '../../shared/eventState'
+import DataTable from '../components/DataTable.vue'
 
 const route = useRoute()
 const { events, loading, error } = useEvents({ createdBy: user.value.uid })
@@ -29,6 +31,26 @@ function when(event) {
   const day = formatEventDay(event.startsAt)
   return `${day.weekday} ${day.day} ${day.month}, ${formatTimeRange(event.startsAt, event.endsAt)}`
 }
+
+const stateOf = (event) => STATE_LABELS[eventState(event)]
+
+const table = useTable(
+  events,
+  [
+    { key: 'title', label: 'Event', text: (event) => event.title },
+    { key: 'venue', label: 'Venue', text: (event) => event.venue },
+    { key: 'when', label: 'When', text: when, sortValue: (event) => event.startsAt },
+    {
+      key: 'registered',
+      label: 'Registered',
+      text: (event) => `${event.registeredCount}/${event.capacity}`,
+      sortValue: (event) => event.registeredCount,
+    },
+    { key: 'status', label: 'Status', text: (event) => stateOf(event).label },
+    { key: 'actions', label: 'Actions', hideLabel: true },
+  ],
+  { initialSort: { key: 'when', dir: 'asc' } },
+)
 </script>
 
 <template>
@@ -47,42 +69,22 @@ function when(event) {
     <p v-else-if="error" class="text-danger">{{ error }}</p>
     <p v-else-if="!events.length" class="text-muted">You haven't created any events yet.</p>
 
-    <div v-else class="table-responsive">
-      <table class="table align-middle">
-        <thead>
-          <tr>
-            <th scope="col">Event</th>
-            <th scope="col">When</th>
-            <th scope="col">Registered</th>
-            <th scope="col">Status</th>
-            <th scope="col"><span class="visually-hidden">Actions</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="event in events" :key="event.id">
-            <td>
-              <div class="fw-semibold">{{ event.title }}</div>
-              <div class="small text-muted">{{ event.venue }}</div>
-            </td>
-            <td>{{ when(event) }}</td>
-            <td>{{ event.registeredCount }}/{{ event.capacity }}</td>
-            <td>
-              <span class="badge" :class="STATE_LABELS[eventState(event)].class">
-                {{ STATE_LABELS[eventState(event)].label }}
-              </span>
-            </td>
-            <td class="text-end">
-              <RouterLink
-                v-if="event.status !== 'cancelled'"
-                class="btn btn-outline-success btn-sm"
-                :to="{ name: 'event-edit', params: { id: event.id } }"
-              >
-                Edit<span class="visually-hidden"> {{ event.title }}</span>
-              </RouterLink>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <DataTable v-else :table="table" caption="Your events">
+      <template #cell-title="{ row }">
+        <span class="fw-semibold">{{ row.title }}</span>
+      </template>
+      <template #cell-status="{ row }">
+        <span class="badge" :class="stateOf(row).class">{{ stateOf(row).label }}</span>
+      </template>
+      <template #cell-actions="{ row }">
+        <RouterLink
+          v-if="row.status !== 'cancelled'"
+          class="btn btn-outline-success btn-sm text-nowrap"
+          :to="{ name: 'event-edit', params: { id: row.id } }"
+        >
+          Edit or cancel<span class="visually-hidden"> {{ row.title }}</span>
+        </RouterLink>
+      </template>
+    </DataTable>
   </div>
 </template>
