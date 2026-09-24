@@ -2,7 +2,9 @@
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { collection, doc, getDoc, getDocs, getFirestore } from 'firebase/firestore'
-import { user } from '../auth/authState'
+import { emailVerified, refreshVerification, sendVerification, user } from '../auth/authState'
+import { authErrorMessage } from '../auth/authErrors'
+import { emailRosterToMe } from '../api/client'
 import { toEvent } from '../composables/useEvents'
 import { useTable } from '../composables/useTable'
 import { formatDateTime, formatLongDate, formatTimeRange } from '../utils/format'
@@ -48,6 +50,51 @@ onMounted(async () => {
   }
 })
 
+// "Email me the roster": the server builds the CSV and sends it to the
+// signed-in user's own verified address.
+const emailing = ref(false)
+const emailStatus = ref('')
+const emailFailed = ref(false)
+
+// A sign-in token issued before the user verified still says "unverified";
+// if the server rejects it for that, refresh the account and try once more.
+async function sendRosterEmail() {
+  try {
+    return await emailRosterToMe(route.params.id)
+  } catch (error) {
+    if (error.code === 'EMAIL_NOT_VERIFIED' && (await refreshVerification())) {
+      return emailRosterToMe(route.params.id)
+    }
+    throw error
+  }
+}
+
+async function emailRoster() {
+  emailing.value = true
+  emailStatus.value = ''
+  emailFailed.value = false
+  try {
+    const { sentTo, count } = await sendRosterEmail()
+    emailStatus.value = `Roster (${count} registrant${count === 1 ? '' : 's'}) sent to ${sentTo}.`
+  } catch (error) {
+    emailFailed.value = true
+    emailStatus.value = error.message
+  } finally {
+    emailing.value = false
+  }
+}
+
+async function resendVerification() {
+  try {
+    await sendVerification()
+    emailStatus.value = `Verification email sent to ${user.value.email}. Open the link, then choose "I've verified" in the banner at the top.`
+    emailFailed.value = false
+  } catch (error) {
+    emailStatus.value = authErrorMessage(error)
+    emailFailed.value = true
+  }
+}
+
 const table = useTable(
   registrations,
   [
@@ -88,6 +135,30 @@ const table = useTable(
         {{ event.venue }} · {{ event.registeredCount }}/{{ event.capacity }} registered
         <span v-if="event.status === 'cancelled'" class="badge text-bg-danger ms-1">Cancelled</span>
       </p>
+
+      <section class="border rounded-3 p-3 mb-4" aria-labelledby="roster-email-heading">
+        <h2 id="roster-email-heading" class="h6 fw-bold">Email me the roster</h2>
+        <template v-if="!emailVerified">
+          <p class="small mb-2">
+            Email features are locked until you verify your email address, so registrant details only go to an
+            address you've proved is yours.
+          </p>
+          <button class="btn btn-outline-secondary btn-sm" type="button" @click="resendVerification">
+            Resend verification email
+          </button>
+        </template>
+        <template v-else>
+          <p class="small text-muted mb-2">
+            Sends the full roster as a CSV file to your own address, {{ user?.email }}.
+          </p>
+          <button class="btn btn-outline-success btn-sm" type="button" :disabled="emailing" @click="emailRoster">
+            {{ emailing ? 'Sending...' : 'Email me the roster' }}
+          </button>
+        </template>
+        <p class="small mt-2 mb-0" :class="emailFailed ? 'text-danger' : 'text-success'" role="status">
+          {{ emailStatus }}
+        </p>
+      </section>
 
       <p v-if="!registrations.length" class="text-muted">Nobody has registered for this event yet.</p>
       <template v-else>

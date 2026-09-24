@@ -98,6 +98,14 @@ One-time setup:
 4. `npm run deploy` and note the URL it prints (e.g. `https://ecostride-api.<subdomain>.workers.dev`).
 5. Set `VITE_API_BASE_URL` in the root `.env` to that URL, then rebuild and redeploy the site. The URL is also inserted into the page's Content-Security-Policy at build time.
 
+Email (Brevo, free tier) - needed for "Email me the roster" and emailing registrants:
+
+1. Create a Brevo account. Under **Senders, Domains & Dedicated IPs > Senders**, add the address emails should come from and click the link Brevo sends to verify it. Brevo rejects mail from unverified senders.
+2. Under **SMTP & API > API Keys**, create a v3 API key.
+3. In `worker/`: `npx wrangler secret put BREVO_API_KEY` and `npx wrangler secret put BREVO_SENDER_EMAIL` (the verified address; kept as a secret so a personal address stays out of the repo), then `npm run deploy`.
+
+Until both are set, email endpoints answer `EMAIL_UNAVAILABLE`. All sending goes through `worker/src/core/email.js`, so changing provider means changing that one file.
+
 Local development: copy `worker/.dev.vars.example` to `worker/.dev.vars` (git-ignored), then `npm run dev` in `worker/`, and point `VITE_API_BASE_URL` at `http://localhost:8787`.
 
 Check it works: sign in on the dev site, open the browser console and run `await ecoApi.me()`. It should return your uid, email, whether it's verified, and your role read from Firestore.

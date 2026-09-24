@@ -127,6 +127,11 @@ export async function refreshVerification() {
     return false
   }
   await current.reload()
+  if (current.emailVerified) {
+    // The ID token still says email_verified: false until it is re-issued, and
+    // the API trusts only the token.
+    await current.getIdToken(true)
+  }
   emailVerified.value = current.emailVerified
   return current.emailVerified
 }

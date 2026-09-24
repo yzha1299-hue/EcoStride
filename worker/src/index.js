@@ -1,6 +1,7 @@
 // Cloudflare Workers adapter. Everything platform-specific lives here: routing,
 // CORS, reading the request, identity verification, logging and turning results
 // or errors into Responses. Business logic lives in ./handlers.
+import { createEmailSender } from './core/email.js'
 import { ApiError, invalidRequest, notFound } from './core/errors.js'
 import { createFirestore } from './core/firestore.js'
 import { bearerToken, verifyIdToken } from './core/idToken.js'
@@ -8,6 +9,7 @@ import { getAccessToken, parseServiceAccount } from './core/serviceAccount.js'
 import { validateBody } from './core/validate.js'
 import { me } from './handlers/me.js'
 import { cancelRegistration, cancelSchema, register, registerSchema } from './handlers/registrations.js'
+import { emailRoster, rosterEmailSchema } from './handlers/rosterEmail.js'
 
 const DEFAULT_MAX_BODY_BYTES = 16 * 1024
 
@@ -17,6 +19,7 @@ const ROUTES = {
   'GET /me': { handler: me, auth: true },
   'POST /registrations': { handler: register, auth: true, schema: registerSchema },
   'POST /registrations/cancel': { handler: cancelRegistration, auth: true, schema: cancelSchema },
+  'POST /events/roster-email': { handler: emailRoster, auth: true, schema: rosterEmailSchema },
 }
 
 function allowedOrigin(request, env) {
@@ -80,6 +83,7 @@ function buildDeps(env) {
         return getAccessToken(serviceAccount)
       },
     }),
+    email: createEmailSender({ apiKey: env.BREVO_API_KEY, senderEmail: env.BREVO_SENDER_EMAIL }),
   }
 }
 

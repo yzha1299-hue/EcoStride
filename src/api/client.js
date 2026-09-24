@@ -51,3 +51,5 @@ export const registerForEvent = (eventId, { name, needs }) =>
 
 export const cancelRegistration = (eventId) =>
   apiFetch('/registrations/cancel', { method: 'POST', body: { eventId } })
+
+export const emailRosterToMe = (eventId) => apiFetch('/events/roster-email', { method: 'POST', body: { eventId } })

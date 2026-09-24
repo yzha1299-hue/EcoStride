@@ -14,3 +14,9 @@ export const unauthenticated = (message = 'Sign in to continue.') =>
 export const invalidRequest = (message) => new ApiError(400, 'INVALID_REQUEST', message)
 
 export const notFound = (message = 'Not found.') => new ApiError(404, 'NOT_FOUND', message)
+
+export const notOwner = (message = "Only the club member who created this event can do that.") =>
+  new ApiError(403, 'NOT_OWNER', message)
+
+export const emailNotVerified = () =>
+  new ApiError(403, 'EMAIL_NOT_VERIFIED', 'Verify your email address before using email features.')

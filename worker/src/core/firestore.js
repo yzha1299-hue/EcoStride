@@ -71,6 +71,25 @@ export function createFirestore({ projectId, getToken }) {
     }
   }
 
+  // Every document directly inside a collection, following Firestore's pages.
+  async function listDocuments(collectionPath) {
+    const documents = []
+    let pageToken = ''
+    do {
+      const params = new URLSearchParams({ pageSize: '300' })
+      if (pageToken) params.set('pageToken', pageToken)
+      const response = await fetchUpstream('Firestore', `${base}/${collectionPath}?${params}`, {
+        headers: await authHeaders(),
+      })
+      const page = await response.json()
+      for (const doc of page.documents || []) {
+        documents.push({ id: doc.name.split('/').pop(), data: decodeFields(doc.fields || {}), updateTime: doc.updateTime })
+      }
+      pageToken = page.nextPageToken || ''
+    } while (pageToken)
+    return documents
+  }
+
   // Full resource name, as commit writes and preconditions refer to documents.
   function documentName(path) {
     return `projects/${projectId}/databases/(default)/documents/${path}`
@@ -110,5 +129,5 @@ export function createFirestore({ projectId, getToken }) {
     throw error
   }
 
-  return { getDocument, documentName, commit }
+  return { getDocument, listDocuments, documentName, commit }
 }

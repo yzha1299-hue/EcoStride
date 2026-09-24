@@ -6,6 +6,9 @@ import { invalidRequest } from './errors.js'
 //     eventId: { type: 'string', required: true, pattern: /^[\w-]+$/ } }
 // Unknown fields are rejected rather than ignored, so a client can never smuggle
 // extra data (such as a registeredCount) through to a handler.
+// Firestore document IDs as the app creates them (auto IDs and seeded slugs).
+export const EVENT_ID = { type: 'string', required: true, maxLength: 128, pattern: /^[\w-]+$/ }
+
 export function validateBody(schema, body) {
   if (body === null || typeof body !== 'object' || Array.isArray(body)) {
     throw invalidRequest('Request body must be a JSON object.')

@@ -23,9 +23,9 @@ getFirestore()
 initAuth()
 
 if (import.meta.env.DEV) {
-  // Dev-only hook for checking the API from the browser console: await ecoApi.me()
-  import('./api/client').then(({ getMe }) => {
-    window.ecoApi = { me: getMe }
+  // Dev-only hooks for checking authenticated API responses from the browser console.
+  import('./api/client').then(({ emailRosterToMe, getMe }) => {
+    window.ecoApi = { emailRoster: emailRosterToMe, me: getMe }
   })
 }
 

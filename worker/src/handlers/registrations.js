@@ -1,6 +1,7 @@
 import { EVENT_STATE, eventState } from '../../../shared/eventState.js'
 import { ApiError, notFound } from '../core/errors.js'
 import { encodeFields, PreconditionFailed } from '../core/firestore.js'
+import { EVENT_ID } from '../core/validate.js'
 
 // Registering and cancelling are the only ways registeredCount changes, and
 // they run here rather than in the browser so the capacity cap can't be
@@ -58,7 +59,7 @@ function changeCount(firestore, eventPath, event, delta) {
 }
 
 export const registerSchema = {
-  eventId: { type: 'string', required: true, maxLength: 128, pattern: /^[\w-]+$/ },
+  eventId: EVENT_ID,
   name: { type: 'string', required: true, maxLength: 100 },
   needs: { type: 'string', maxLength: 500 },
 }
@@ -103,9 +104,7 @@ export async function register({ user, body, deps }) {
   })
 }
 
-export const cancelSchema = {
-  eventId: { type: 'string', required: true, maxLength: 128, pattern: /^[\w-]+$/ },
-}
+export const cancelSchema = { eventId: EVENT_ID }
 
 export async function cancelRegistration({ user, body, deps }) {
   const { firestore } = deps
