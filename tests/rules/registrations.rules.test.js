@@ -32,6 +32,7 @@ beforeEach(async () => {
   await env.clearFirestore()
   await seed(env, 'users/clara', { email: 'clara@example.com', role: 'clubMember' })
   await seed(env, 'users/dave', { email: 'dave@example.com', role: 'clubMember' })
+  await seed(env, 'users/paul', { email: 'paul@example.com', role: 'participant' })
   await seed(env, 'events/e1', { title: 'Bike basics', capacity: 10, registeredCount: 1, status: 'open', createdBy: 'clara' })
   await seed(env, 'events/e1/registrations/rita', registration)
 })
@@ -53,7 +54,7 @@ describe('reading registrations', () => {
     await assertSucceeds(getDoc(doc(db, 'events/e1/registrations/paul')))
   })
 
-  it("does not let another user read someone else's registration", async () => {
+  it("does not let a participant read someone else's registration", async () => {
     const db = signedInAs(env, 'paul')
 
     await assertFails(getDoc(doc(db, 'events/e1/registrations/rita')))

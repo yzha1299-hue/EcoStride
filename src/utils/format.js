@@ -40,6 +40,21 @@ export function formatTimeRange(start, end) {
   return `${timeOfDay.format(start)} - ${timeOfDay.format(end)}`
 }
 
+const dateTime = new Intl.DateTimeFormat('en-AU', {
+  timeZone: MELBOURNE_TZ,
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+  hour12: true,
+})
+
+// "23 Sept 2026, 3:05 pm", for timestamps such as when someone registered.
+export function formatDateTime(date) {
+  return dateTime.format(date)
+}
+
 // "Saturday 6 September 2026", used where the date must be unambiguous (e.g. screen readers).
 export function formatLongDate(date) {
   return longDate.format(date)

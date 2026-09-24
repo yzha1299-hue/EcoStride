@@ -77,13 +77,21 @@ const table = useTable(
         <span class="badge" :class="stateOf(row).class">{{ stateOf(row).label }}</span>
       </template>
       <template #cell-actions="{ row }">
-        <RouterLink
-          v-if="row.status !== 'cancelled'"
-          class="btn btn-outline-success btn-sm text-nowrap"
-          :to="{ name: 'event-edit', params: { id: row.id } }"
-        >
-          Edit or cancel<span class="visually-hidden"> {{ row.title }}</span>
-        </RouterLink>
+        <div class="d-flex gap-2 justify-content-end">
+          <RouterLink
+            class="btn btn-outline-secondary btn-sm text-nowrap"
+            :to="{ name: 'event-roster', params: { id: row.id } }"
+          >
+            Roster<span class="visually-hidden"> for {{ row.title }}</span>
+          </RouterLink>
+          <RouterLink
+            v-if="row.status !== 'cancelled'"
+            class="btn btn-outline-success btn-sm text-nowrap"
+            :to="{ name: 'event-edit', params: { id: row.id } }"
+          >
+            Edit or cancel<span class="visually-hidden"> {{ row.title }}</span>
+          </RouterLink>
+        </div>
       </template>
     </DataTable>
   </div>
