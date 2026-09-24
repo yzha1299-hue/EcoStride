@@ -42,6 +42,16 @@ npm run dev
 npm run build
 ```
 
+### Tests
+
+```sh
+npm test            # everything
+npm run test:unit   # Vitest unit tests (no emulator needed)
+npm run test:rules  # Firestore security rules, on the local emulator
+```
+
+Rules tests need Java 11+ and the Firebase CLI (`npm install -g firebase-tools`). `test:rules` starts the Firestore emulator under the offline `demo-ecostride` project, runs `tests/rules/` against `firestore.rules` acting as different signed-in users, then shuts the emulator down. It never touches the real project.
+
 ### Deploy to Firebase Hosting
 
 One-time setup:
