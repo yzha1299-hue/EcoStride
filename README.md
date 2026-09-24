@@ -4,8 +4,8 @@ This template should help get you started developing with Vue 3 in Vite.
 
 ## App Data
 
-Dynamic app content is loaded from JavaScript data structures in `src/data/ecostrideData.js`.
-Views consume these sources through `src/composables/useJsonData.js` using keys like `home`, `events`, `clubs`, and `impact`.
+Events are stored in Firestore and loaded through `src/composables/useEvents.js` (see "Seed sample events" below).
+Other content is still loaded from JavaScript data structures in `src/data/ecostrideData.js` through `src/composables/useJsonData.js`, using keys like `home`, `clubs`, and `impact`.
 
 ## Recommended IDE Setup
 
@@ -52,6 +52,22 @@ npm run test:rules  # Firestore security rules, on the local emulator
 
 Rules tests need Java 11+ and the Firebase CLI (`npm install -g firebase-tools`). `test:rules` starts the Firestore emulator under the offline `demo-ecostride` project, runs `tests/rules/` against `firestore.rules` acting as different signed-in users, then shuts the emulator down. It never touches the real project.
 
+### Seed sample events
+
+Events live in Firestore. `npm run seed:events` writes five sample events (dated a few days to two weeks from today, Melbourne time) plus demo registrations using `example.com` addresses. It keeps the original event IDs so existing ratings still attach, and re-running it replaces them.
+
+```sh
+# PowerShell
+$env:GOOGLE_APPLICATION_CREDENTIALS = "C:\keys\ecostride-worker-key.json"  # outside the repo
+$env:SEED_CREATOR_UID = "<uid of a club-member account>"
+npm run seed:events
+```
+
+The key can be one for the Worker's `ecostride-worker` service account (Cloud Datastore User is enough). `SEED_CREATOR_UID` becomes each event's `createdBy`, so that club member can manage them; find it in Firebase console > Authentication > Users.
+
+To try it without touching real data, run it against the emulator:
+`firebase emulators:exec --only firestore --project demo-ecostride "node scripts/seed-events.mjs"` (with `SEED_CREATOR_UID` set).
+
 ### Deploy to Firebase Hosting
 
 One-time setup:
@@ -64,7 +80,7 @@ Each deploy:
 
 ```sh
 npm run build
-firebase deploy --only hosting,firestore:rules
+firebase deploy --only hosting,firestore:rules,firestore:indexes
 ```
 
 The app uses HTML5 history routing, so `firebase.json` rewrites every path that is not a real file to `index.html`. Without it, opening or refreshing a deep link such as `/events` returns a 404. Hashed files under `/assets` are cached for a year; `index.html` is never cached so new deploys take effect immediately.
@@ -77,7 +93,8 @@ One-time setup:
 
 1. **Service account with least privilege.** In Google Cloud console for project `ecostride-82c87`: IAM & Admin > Service Accounts > Create, name it e.g. `ecostride-worker`, and grant only the **Cloud Datastore User** role. Then Keys > Add key > JSON. Keep the file outside the repo.
 2. `cd worker && npm install && npx wrangler login`
-3. Store the key as a secret (paste the whole JSON on one line): `npx wrangler secret put FIREBASE_SERVICE_ACCOUNT`
+3. Store the key as a secret by piping the file in (the interactive prompt keeps only the first line of a multi-line paste):
+   `Get-Content C:\keys\ecostride-worker-key.json -Raw | npx wrangler secret put FIREBASE_SERVICE_ACCOUNT` (PowerShell)
 4. `npm run deploy` and note the URL it prints (e.g. `https://ecostride-api.<subdomain>.workers.dev`).
 5. Set `VITE_API_BASE_URL` in the root `.env` to that URL, then rebuild and redeploy the site. The URL is also inserted into the page's Content-Security-Policy at build time.
 

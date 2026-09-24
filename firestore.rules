@@ -35,6 +35,13 @@ service cloud.firestore {
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
+    // Events are visible to every signed-in user. Writes are not granted here:
+    // creation/editing is added for club members separately, and the
+    // registeredCount is only ever changed by the server (the API Worker).
+    match /events/{eventId} {
+      allow read: if request.auth != null;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

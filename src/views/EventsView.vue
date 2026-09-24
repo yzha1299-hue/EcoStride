@@ -1,18 +1,18 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
-import { useJsonData } from '../composables/useJsonData'
+import { useEvents } from '../composables/useEvents'
 import { useRatings } from '../composables/useRatings'
 import { useAuth } from '../auth/authState'
+import { formatEventDay, formatLongDate, formatTimeRange } from '../utils/format'
+import { EVENT_STATE, eventState, placesLeft } from '../../shared/eventState'
 import StarRating from '../components/StarRating.vue'
 
-const { data, loading, error } = useJsonData('events')
+const { events, loading, error } = useEvents()
 const { isAuthenticated } = useAuth()
 
 const query = ref('')
 const type = ref('All')
 const access = ref('Any')
-
-const events = computed(() => data.value?.events ?? [])
 
 const typeOptions = computed(() => ['All', ...new Set(events.value.map((event) => event.type))])
 const accessOptions = computed(() => [
@@ -24,27 +24,42 @@ const filteredEvents = computed(() => {
   const search = query.value.trim().toLowerCase()
 
   return events.value.filter((event) => {
-    const title = (event.title ?? '').toLowerCase()
-    const matchesSearch = !search || title.includes(search)
+    const haystack = [event.title, event.venue, event.address, event.clubName]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+    const matchesSearch = !search || haystack.includes(search)
     const matchesType = type.value === 'All' || event.type === type.value
-    const matchesAccess = access.value === 'Any' || event.access.includes(access.value)
+    const matchesAccess = access.value === 'Any' || (event.access ?? []).includes(access.value)
     return matchesSearch && matchesType && matchesAccess
   })
 })
 
 function applyFilters() {
   query.value = query.value.trim()
-  type.value = type.value
-  access.value = access.value
+}
+
+const STATE_BADGES = {
+  [EVENT_STATE.OPEN]: { label: 'Open', class: 'text-bg-success' },
+  [EVENT_STATE.FULL]: { label: 'Full', class: 'text-bg-warning' },
+  [EVENT_STATE.CLOSED]: { label: 'Registration closed', class: 'text-bg-secondary' },
+  [EVENT_STATE.CANCELLED]: { label: 'Cancelled', class: 'text-bg-danger' },
+}
+
+function stateBadge(event) {
+  return STATE_BADGES[eventState(event)]
 }
 
 function eventMeta(event) {
-  const accessLabel = event.access[0] ?? ''
-  const waitlist = event.status === 'waitlist' ? 'Waitlist' : accessLabel
-  const place = event.suburb || event.venue
-  return `${place} · ${event.weekday} ${event.day} ${event.month} · Capacity ${event.registered}/${event.capacity}${
-    waitlist ? ` · ${waitlist}` : ''
-  }`
+  const parts = [event.venue, formatTimeRange(event.startsAt, event.endsAt)]
+  if (eventState(event) === EVENT_STATE.OPEN) {
+    const left = placesLeft(event)
+    parts.push(`${left} place${left === 1 ? '' : 's'} left of ${event.capacity}`)
+  }
+  if (event.access?.length) {
+    parts.push(event.access.join(', '))
+  }
+  return parts.join(' · ')
 }
 
 const ratingsByEvent = reactive({})
@@ -77,7 +92,7 @@ watch(
               v-model="query"
               class="form-control"
               type="search"
-              placeholder="Workshop, suburb, club..."
+              placeholder="Workshop, venue, suburb, club..."
             />
           </div>
           <div class="col-12 col-sm-6 col-md-3">
@@ -113,15 +128,22 @@ watch(
             <div class="row g-0 align-items-center">
               <div class="col-4 col-sm-3 col-lg-2">
                 <div class="date-badge">
-                  <span class="date-badge-month">{{ event.month }}</span>
-                  <span class="date-badge-day">{{ event.day }}</span>
-                  <span class="date-badge-week">{{ event.weekday }}</span>
+                  <span class="visually-hidden">{{ formatLongDate(event.startsAt) }}</span>
+                  <span class="date-badge-month" aria-hidden="true">{{ formatEventDay(event.startsAt).month }}</span>
+                  <span class="date-badge-day" aria-hidden="true">{{ formatEventDay(event.startsAt).day }}</span>
+                  <span class="date-badge-week" aria-hidden="true">{{ formatEventDay(event.startsAt).weekday }}</span>
                 </div>
               </div>
               <div class="col-8 col-sm-9 col-lg-10">
                 <div class="card-body d-flex flex-column flex-md-row align-items-md-center gap-3">
                   <div class="flex-grow-1">
-                    <h2 class="h5 fw-bold mb-1">{{ event.title }}</h2>
+                    <h2 class="h5 fw-bold mb-1">
+                      {{ event.title }}
+                      <span class="badge ms-1 align-middle" :class="stateBadge(event).class">
+                        {{ stateBadge(event).label }}
+                      </span>
+                    </h2>
+                    <p v-if="event.clubName" class="small mb-1">Hosted by {{ event.clubName }}</p>
                     <p class="small text-muted mb-0">{{ eventMeta(event) }}</p>
 
                     <div v-if="ratingsByEvent[event.id]" class="mt-2">
@@ -153,13 +175,15 @@ watch(
                       </p>
                     </div>
                   </div>
-                  <a
-                    class="btn btn-sm align-self-start"
-                    :class="event.status === 'waitlist' ? 'btn-outline-success' : 'btn-success'"
-                    href="#"
+                  <!-- Registration itself arrives with the registration API. -->
+                  <button
+                    v-if="eventState(event) === EVENT_STATE.OPEN"
+                    class="btn btn-sm btn-success align-self-start"
+                    type="button"
+                    disabled
                   >
-                    {{ event.status === 'waitlist' ? 'Join waitlist' : 'Register' }}
-                  </a>
+                    Register
+                  </button>
                 </div>
               </div>
             </div>

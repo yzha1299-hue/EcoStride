@@ -20,16 +20,15 @@ export async function apiFetch(path, { method = 'GET', body } = {}) {
   // getIdToken() returns the cached token and refreshes it only when near expiry.
   const token = await currentUser.getIdToken()
 
+  const init = { method, headers: { Authorization: `Bearer ${token}` } }
+  if (body !== undefined) {
+    init.headers['Content-Type'] = 'application/json'
+    init.body = JSON.stringify(body)
+  }
+
   let response
   try {
-    response = await fetch(`${BASE_URL}${path}`, {
-      method,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-      },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    })
+    response = await fetch(`${BASE_URL}${path}`, init)
   } catch {
     throw new ApiError(0, 'NETWORK_ERROR', 'We could not reach the server. Check your connection and try again.')
   }
