@@ -7,6 +7,7 @@ import { useTable } from '../composables/useTable'
 import { formatEventDay, formatTimeRange } from '../utils/format'
 import { EVENT_STATE, eventState } from '../../shared/eventState'
 import DataTable from '../components/DataTable.vue'
+import TableExport from '../components/TableExport.vue'
 
 const route = useRoute()
 const { events, loading, error } = useEvents({ createdBy: user.value.uid })
@@ -69,30 +70,33 @@ const table = useTable(
     <p v-else-if="error" class="text-danger">{{ error }}</p>
     <p v-else-if="!events.length" class="text-muted">You haven't created any events yet.</p>
 
-    <DataTable v-else :table="table" caption="Your events">
-      <template #cell-title="{ row }">
-        <span class="fw-semibold">{{ row.title }}</span>
-      </template>
-      <template #cell-status="{ row }">
-        <span class="badge" :class="stateOf(row).class">{{ stateOf(row).label }}</span>
-      </template>
-      <template #cell-actions="{ row }">
-        <div class="d-flex gap-2 justify-content-end">
-          <RouterLink
-            class="btn btn-outline-secondary btn-sm text-nowrap"
-            :to="{ name: 'event-roster', params: { id: row.id } }"
-          >
-            Roster<span class="visually-hidden"> for {{ row.title }}</span>
-          </RouterLink>
-          <RouterLink
-            v-if="row.status !== 'cancelled'"
-            class="btn btn-outline-success btn-sm text-nowrap"
-            :to="{ name: 'event-edit', params: { id: row.id } }"
-          >
-            Edit or cancel<span class="visually-hidden"> {{ row.title }}</span>
-          </RouterLink>
-        </div>
-      </template>
-    </DataTable>
+    <template v-else>
+      <TableExport class="mb-3" :table="table" name="my events" title="EcoStride - my events" />
+      <DataTable :table="table" caption="Your events">
+        <template #cell-title="{ row }">
+          <span class="fw-semibold">{{ row.title }}</span>
+        </template>
+        <template #cell-status="{ row }">
+          <span class="badge" :class="stateOf(row).class">{{ stateOf(row).label }}</span>
+        </template>
+        <template #cell-actions="{ row }">
+          <div class="d-flex gap-2 justify-content-end">
+            <RouterLink
+              class="btn btn-outline-secondary btn-sm text-nowrap"
+              :to="{ name: 'event-roster', params: { id: row.id } }"
+            >
+              Roster<span class="visually-hidden"> for {{ row.title }}</span>
+            </RouterLink>
+            <RouterLink
+              v-if="row.status !== 'cancelled'"
+              class="btn btn-outline-success btn-sm text-nowrap"
+              :to="{ name: 'event-edit', params: { id: row.id } }"
+            >
+              Edit or cancel<span class="visually-hidden"> {{ row.title }}</span>
+            </RouterLink>
+          </div>
+        </template>
+      </DataTable>
+    </template>
   </div>
 </template>

@@ -7,6 +7,7 @@ import { toEvent } from '../composables/useEvents'
 import { useTable } from '../composables/useTable'
 import { formatDateTime, formatLongDate, formatTimeRange } from '../utils/format'
 import DataTable from '../components/DataTable.vue'
+import TableExport from '../components/TableExport.vue'
 
 // The registrants of one of the signed-in club member's events. Firestore rules
 // only let the event's creator read its registrations; the check here is just
@@ -89,7 +90,15 @@ const table = useTable(
       </p>
 
       <p v-if="!registrations.length" class="text-muted">Nobody has registered for this event yet.</p>
-      <DataTable v-else :table="table" :caption="`Registrants for ${event.title}`" />
+      <template v-else>
+        <TableExport
+          class="mb-3"
+          :table="table"
+          :name="`roster ${event.title}`"
+          :title="`Roster: ${event.title} (${formatLongDate(event.startsAt)})`"
+        />
+        <DataTable :table="table" :caption="`Registrants for ${event.title}`" />
+      </template>
     </template>
   </div>
 </template>
