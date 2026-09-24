@@ -5,7 +5,7 @@ import { useJsonData } from '../composables/useJsonData'
 import { user } from '../auth/authState'
 import { geoDirections, geoSearch } from '../api/client'
 import { validatePostcode, validateSuburb } from '../utils/validation'
-import { distanceKm } from '../utils/geo'
+import { distanceKm, formatDistance, formatDuration, profileForMode } from '../utils/geo'
 import RouteMap from '../components/RouteMap.vue'
 
 const { data, loading, error } = useJsonData('activeTravel')
@@ -170,6 +170,85 @@ function clearOrigin() {
   announcement.value = 'Showing all routes.'
 }
 
+// Directions from the origin to a route's start, for the chosen travel mode.
+const trip = ref(null)
+const tripLoading = ref(false)
+const tripSlow = ref(false)
+const tripError = ref('')
+const tripHeading = ref(null)
+const suburbInput = ref(null)
+
+function clearTrip() {
+  trip.value = null
+  tripError.value = ''
+}
+
+// A new mode or start point makes existing directions wrong.
+watch([travelMode, origin], () => {
+  if (trip.value) {
+    clearTrip()
+    announcement.value = 'Directions cleared because the travel mode or start point changed.'
+  }
+})
+
+function currentPosition() {
+  return new Promise((resolve, reject) => {
+    if (!('geolocation' in navigator)) {
+      reject(Object.assign(new Error('unsupported'), { code: 2 }))
+      return
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: false,
+      timeout: 10000,
+      maximumAge: 5 * 60 * 1000,
+    })
+  })
+}
+
+async function getDirections(route) {
+  tripError.value = ''
+  selectRoute(route.id)
+  if (!user.value) {
+    tripError.value = 'Sign in to get directions.'
+    return
+  }
+
+  tripLoading.value = true
+  tripSlow.value = false
+  const slowTimer = setTimeout(() => {
+    tripSlow.value = true
+  }, 5000)
+  try {
+    // Start from the searched place or known location; otherwise ask for the
+    // user's location, and if that isn't possible, ask them to type a place.
+    if (!origin.value) {
+      try {
+        const position = await currentPosition()
+        origin.value = { lat: position.coords.latitude, lng: position.coords.longitude, label: 'Your location' }
+      } catch (geoError) {
+        tripError.value =
+          (GEOLOCATION_ERRORS[geoError.code] ?? GEOLOCATION_ERRORS[2]) +
+          ' Directions will start from the suburb you search for.'
+        suburbInput.value?.focus()
+        return
+      }
+    }
+    const mode = travelMode.value
+    const from = origin.value
+    const result = await geoDirections({ from, to: route.start, profile: profileForMode(mode) })
+    trip.value = { ...result, routeName: route.name, fromLabel: from.label, mode }
+    announcement.value = ''
+    await nextTick()
+    tripHeading.value?.focus()
+  } catch (directionsError) {
+    tripError.value = directionsError.message
+  } finally {
+    clearTimeout(slowTimer)
+    tripLoading.value = false
+    tripSlow.value = false
+  }
+}
+
 // Selecting from the list highlights and centres the marker; selecting a
 // marker highlights the card and brings it into view.
 async function selectRoute(id, { fromMap = false } = {}) {
@@ -201,6 +280,7 @@ async function selectRoute(id, { fromMap = false } = {}) {
             <label class="form-label" for="suburb">Suburb</label>
             <input
               id="suburb"
+              ref="suburbInput"
               v-model="suburb"
               class="form-control"
               :class="{ 'is-invalid': showErrors && suburbError }"
@@ -288,9 +368,42 @@ async function selectRoute(id, { fromMap = false } = {}) {
               :selected-id="selectedId"
               :origin="origin"
               label="Map of walking and cycling routes. Route markers can be selected with Enter."
+              :directions-line="trip?.coordinates ?? null"
               @select="(id) => selectRoute(id, { fromMap: true })"
             />
             <p v-if="trailNote" class="small text-muted mt-2 mb-0">{{ trailNote }}</p>
+
+            <p v-if="tripLoading" class="small text-muted mt-3 mb-0" role="status">
+              {{ tripSlow ? 'Still getting directions - the directions service is slow right now...' : 'Getting directions...' }}
+            </p>
+            <p v-if="tripError" class="small text-danger mt-3 mb-0" role="alert">{{ tripError }}</p>
+
+            <section v-if="trip" class="border rounded-3 p-3 mt-3" aria-labelledby="trip-heading">
+              <div class="d-flex justify-content-between align-items-start gap-2">
+                <h2 id="trip-heading" ref="tripHeading" class="h5 fw-bold mb-1" tabindex="-1">
+                  Directions to {{ trip.routeName }}
+                </h2>
+                <button class="btn btn-sm btn-outline-secondary" type="button" @click="clearTrip">
+                  Clear<span class="visually-hidden"> directions</span>
+                </button>
+              </div>
+              <p class="small text-muted mb-2">
+                {{ trip.mode === 'Walk' ? 'Walking' : 'Cycling' }} from {{ trip.fromLabel }} to the start of the route.
+              </p>
+              <p class="mb-2">
+                <strong>{{ formatDistance(trip.distance) }}</strong>, about
+                <strong>{{ formatDuration(trip.duration) }}</strong>
+              </p>
+              <p v-if="trip.mode === 'Micro-mobility'" class="small alert alert-info py-2 mb-2">
+                Scooters and other micro-mobility use cycling directions, so the time is an estimate for a bicycle.
+              </p>
+              <ol class="small mb-0 ps-3">
+                <li v-for="(step, index) in trip.steps" :key="index" class="mb-1">
+                  {{ step.instruction }}
+                  <span v-if="step.distance" class="text-muted">({{ formatDistance(step.distance) }})</span>
+                </li>
+              </ol>
+            </section>
           </div>
 
           <div class="col-12 col-lg-5">
@@ -330,14 +443,24 @@ async function selectRoute(id, { fromMap = false } = {}) {
                           · {{ route.distanceKm.toFixed(1) }} km away
                         </template>
                       </p>
-                      <button
-                        class="btn btn-outline-success btn-sm"
-                        type="button"
-                        :aria-pressed="route.id === selectedId ? 'true' : 'false'"
-                        @click="selectRoute(route.id)"
-                      >
-                        Show on map<span class="visually-hidden">: {{ route.name }}</span>
-                      </button>
+                      <div class="d-flex flex-wrap gap-2">
+                        <button
+                          class="btn btn-success btn-sm"
+                          type="button"
+                          :disabled="tripLoading"
+                          @click="getDirections(route)"
+                        >
+                          Directions<span class="visually-hidden"> to {{ route.name }}</span>
+                        </button>
+                        <button
+                          class="btn btn-outline-success btn-sm"
+                          type="button"
+                          :aria-pressed="route.id === selectedId ? 'true' : 'false'"
+                          @click="selectRoute(route.id)"
+                        >
+                          Show on map<span class="visually-hidden">: {{ route.name }}</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

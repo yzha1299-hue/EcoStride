@@ -15,6 +15,8 @@ const props = defineProps({
   // The searched place or the user's location: { lat, lng, label }.
   origin: { type: Object, default: null },
   label: { type: String, required: true },
+  // Directions to show on top of the routes: [[lat, lng], ...] or null.
+  directionsLine: { type: Array, default: null },
 })
 const emit = defineEmits(['select'])
 
@@ -22,6 +24,7 @@ const container = ref(null)
 let map = null
 let routeLayer = null
 let originMarker = null
+let directionsLayer = null
 const layersById = new Map()
 
 const LINE_STYLE = { color: '#198754', weight: 4, opacity: 0.8 }
@@ -119,6 +122,14 @@ function drawOrigin() {
     .addTo(map)
 }
 
+function drawDirections() {
+  directionsLayer?.remove()
+  directionsLayer = null
+  if (!props.directionsLine?.length) return
+  directionsLayer = L.polyline(props.directionsLine, { color: '#6f42c1', weight: 5, opacity: 0.9 }).addTo(map)
+  map.fitBounds(directionsLayer.getBounds(), { padding: [40, 40], maxZoom: 16 })
+}
+
 onMounted(() => {
   map = L.map(container.value, { zoomControl: true }).setView([MELBOURNE_CENTRE.lat, MELBOURNE_CENTRE.lng], 11)
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -129,6 +140,7 @@ onMounted(() => {
   drawRoutes()
   drawOrigin()
   fitToOrigin()
+  drawDirections()
 })
 
 onBeforeUnmount(() => {
@@ -145,6 +157,7 @@ watch(
     focusSelected()
   },
 )
+watch(() => props.directionsLine, drawDirections)
 watch(
   () => props.origin,
   () => {

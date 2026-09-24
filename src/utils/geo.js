@@ -9,9 +9,11 @@ export function distanceKm(a, b) {
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h))
 }
 
-// "850 m", "2.4 km"
+// "40 m", "850 m", "2.4 km"
 export function formatDistance(metres) {
-  return metres < 1000 ? `${Math.round(metres / 10) * 10} m` : `${(metres / 1000).toFixed(1)} km`
+  if (metres >= 995) return `${(metres / 1000).toFixed(1)} km`
+  if (metres < 100) return `${Math.round(metres)} m`
+  return `${Math.round(metres / 10) * 10} m`
 }
 
 // Directions services have walking and cycling profiles only; scooters and
@@ -21,3 +23,13 @@ export function profileForMode(mode) {
 }
 
 export const MELBOURNE_CENTRE = { lat: -37.8136, lng: 144.9631 }
+
+// "45 s", "12 min", "1 h 5 min"
+export function formatDuration(seconds) {
+  if (seconds < 60) return `${Math.max(1, Math.round(seconds))} s`
+  const minutes = Math.round(seconds / 60)
+  if (minutes < 60) return `${minutes} min`
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  return rest ? `${hours} h ${rest} min` : `${hours} h`
+}
