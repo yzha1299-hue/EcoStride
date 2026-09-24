@@ -93,6 +93,18 @@ service cloud.firestore {
       allow delete: if request.auth != null
         && resource.data.createdBy == request.auth.uid
         && resource.data.registeredCount == 0;
+
+      // One document per registrant, keyed by their uid. Visible only to that
+      // registrant and to the event's creator (it holds email and needs).
+      // No client writes at all: the API Worker creates and deletes these
+      // together with registeredCount in one atomic commit, which is what keeps
+      // the capacity cap unbreakable.
+      match /registrations/{userId} {
+        allow read: if request.auth != null
+          && (request.auth.uid == userId
+            || get(/databases/$(database)/documents/events/$(eventId)).data.createdBy == request.auth.uid);
+        allow write: if false;
+      }
     }
 
     match /{document=**} {

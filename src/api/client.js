@@ -45,3 +45,9 @@ export async function apiFetch(path, { method = 'GET', body } = {}) {
 }
 
 export const getMe = () => apiFetch('/me')
+
+export const registerForEvent = (eventId, { name, needs }) =>
+  apiFetch('/registrations', { method: 'POST', body: { eventId, name, needs: needs || undefined } })
+
+export const cancelRegistration = (eventId) =>
+  apiFetch('/registrations/cancel', { method: 'POST', body: { eventId } })

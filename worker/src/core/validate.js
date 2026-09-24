@@ -2,7 +2,8 @@ import { invalidRequest } from './errors.js'
 
 // Validates a JSON request body against a small schema, e.g.
 //   { name: { type: 'string', required: true, maxLength: 100 },
-//     needs: { type: 'string', maxLength: 500 } }
+//     needs: { type: 'string', maxLength: 500 },
+//     eventId: { type: 'string', required: true, pattern: /^[\w-]+$/ } }
 // Unknown fields are rejected rather than ignored, so a client can never smuggle
 // extra data (such as a registeredCount) through to a handler.
 export function validateBody(schema, body) {
@@ -37,6 +38,9 @@ export function validateBody(schema, body) {
       }
       if (rule.maxLength && trimmed.length > rule.maxLength) {
         throw invalidRequest(`${key} must be at most ${rule.maxLength} characters.`)
+      }
+      if (rule.pattern && !rule.pattern.test(trimmed)) {
+        throw invalidRequest(`${key} is not valid.`)
       }
       result[key] = trimmed
     } else if (rule.type === 'integer') {

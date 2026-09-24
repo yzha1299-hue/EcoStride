@@ -7,6 +7,7 @@ import { bearerToken, verifyIdToken } from './core/idToken.js'
 import { getAccessToken, parseServiceAccount } from './core/serviceAccount.js'
 import { validateBody } from './core/validate.js'
 import { me } from './handlers/me.js'
+import { cancelRegistration, cancelSchema, register, registerSchema } from './handlers/registrations.js'
 
 const DEFAULT_MAX_BODY_BYTES = 16 * 1024
 
@@ -14,6 +15,8 @@ const DEFAULT_MAX_BODY_BYTES = 16 * 1024
 // with a body, the schema that body must match.
 const ROUTES = {
   'GET /me': { handler: me, auth: true },
+  'POST /registrations': { handler: register, auth: true, schema: registerSchema },
+  'POST /registrations/cancel': { handler: cancelRegistration, auth: true, schema: cancelSchema },
 }
 
 function allowedOrigin(request, env) {

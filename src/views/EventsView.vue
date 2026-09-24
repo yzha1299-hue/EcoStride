@@ -1,18 +1,23 @@
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useEvents } from '../composables/useEvents'
+import { useMyRegistrations } from '../composables/useMyRegistrations'
 import { useRatings } from '../composables/useRatings'
-import { useAuth } from '../auth/authState'
+import { useAuth, user } from '../auth/authState'
+import { cancelRegistration } from '../api/client'
 import { formatEventDay, formatLongDate, formatTimeRange } from '../utils/format'
 import { EVENT_STATE, eventState, placesLeft } from '../../shared/eventState'
 import StarRating from '../components/StarRating.vue'
+import RegistrationDialog from '../components/RegistrationDialog.vue'
 
 const { events, loading, error } = useEvents()
 const { isAuthenticated } = useAuth()
+const { registeredIds, setRegistered } = useMyRegistrations(events)
 
 const query = ref('')
 const type = ref('All')
 const access = ref('Any')
+const myEventsOnly = ref(false)
 
 const typeOptions = computed(() => ['All', ...new Set(events.value.map((event) => event.type))])
 const accessOptions = computed(() => [
@@ -31,7 +36,8 @@ const filteredEvents = computed(() => {
     const matchesSearch = !search || haystack.includes(search)
     const matchesType = type.value === 'All' || event.type === type.value
     const matchesAccess = access.value === 'Any' || (event.access ?? []).includes(access.value)
-    return matchesSearch && matchesType && matchesAccess
+    const matchesMine = !myEventsOnly.value || registeredIds.value.has(event.id)
+    return matchesSearch && matchesType && matchesAccess && matchesMine
   })
 })
 
@@ -60,6 +66,80 @@ function eventMeta(event) {
     parts.push(event.access.join(', '))
   }
   return parts.join(' · ')
+}
+
+function isOwnEvent(event) {
+  return event.createdBy === user.value?.uid
+}
+
+function isRegistered(event) {
+  return registeredIds.value.has(event.id)
+}
+
+function canRegister(event) {
+  return eventState(event) === EVENT_STATE.OPEN && !isOwnEvent(event) && !isRegistered(event)
+}
+
+// Registered people can give their place back until the event starts.
+function canCancel(event) {
+  const state = eventState(event)
+  return isRegistered(event) && (state === EVENT_STATE.OPEN || state === EVENT_STATE.FULL)
+}
+
+// Registration outcomes are announced in a live region.
+const announcement = ref('')
+const announcementIsError = ref(false)
+
+function announce(message, isError = false) {
+  announcement.value = message
+  announcementIsError.value = isError
+}
+
+const registeringEvent = ref(null)
+
+function openRegistration(event) {
+  announce('')
+  registeringEvent.value = event
+}
+
+async function onRegistered(result) {
+  const event = registeringEvent.value
+  if (typeof result.registeredCount === 'number') {
+    event.registeredCount = result.registeredCount
+  }
+  setRegistered(event.id, true)
+  registeringEvent.value = null
+  announce(`You're registered for ${event.title}.`)
+  // The Register button has been replaced; put focus on the new Cancel button.
+  await nextTick()
+  document.getElementById(`cancel-${event.id}`)?.focus()
+}
+
+function onFull() {
+  registeringEvent.value.registeredCount = registeringEvent.value.capacity
+}
+
+const cancellingId = ref('')
+
+async function cancel(event) {
+  if (!window.confirm(`Cancel your registration for "${event.title}"? Your place will go to someone else.`)) {
+    return
+  }
+  cancellingId.value = event.id
+  announce('')
+  try {
+    const result = await cancelRegistration(event.id)
+    event.registeredCount = result.registeredCount
+    setRegistered(event.id, false)
+    announce(`Your registration for ${event.title} has been cancelled.`)
+  } catch (cancelError) {
+    if (cancelError.code === 'NOT_REGISTERED') {
+      setRegistered(event.id, false)
+    }
+    announce(cancelError.message, true)
+  } finally {
+    cancellingId.value = ''
+  }
 }
 
 const ratingsByEvent = reactive({})
@@ -110,14 +190,31 @@ watch(
           <div class="col-12 col-md-2">
             <button class="btn btn-success w-100" type="submit">Filter</button>
           </div>
+          <div class="col-12">
+            <div class="form-check form-switch">
+              <input id="myEventsOnly" v-model="myEventsOnly" class="form-check-input" type="checkbox" role="switch" />
+              <label class="form-check-label" for="myEventsOnly">My events (only events I'm registered for)</label>
+            </div>
+          </div>
         </form>
       </div>
     </section>
 
     <section class="py-4 py-lg-5">
       <div class="container">
+        <p
+          class="alert py-2"
+          :class="[announcementIsError ? 'alert-danger' : 'alert-success', { 'visually-hidden': !announcement }]"
+          role="status"
+        >
+          {{ announcement }}
+        </p>
+
         <p v-if="loading" class="text-muted">Loading events...</p>
         <p v-else-if="error" class="text-danger">{{ error }}</p>
+        <p v-else-if="!filteredEvents.length && myEventsOnly" class="text-muted">
+          You aren't registered for any upcoming events that match your filters.
+        </p>
         <p v-else-if="!filteredEvents.length && query" class="text-muted">
           No events match "{{ query }}".
         </p>
@@ -142,6 +239,8 @@ watch(
                       <span class="badge ms-1 align-middle" :class="stateBadge(event).class">
                         {{ stateBadge(event).label }}
                       </span>
+                      <span v-if="isRegistered(event)" class="badge ms-1 align-middle text-bg-primary">Registered</span>
+                      <span v-else-if="isOwnEvent(event)" class="badge ms-1 align-middle text-bg-light border">Your event</span>
                     </h2>
                     <p v-if="event.clubName" class="small mb-1">Hosted by {{ event.clubName }}</p>
                     <p class="small text-muted mb-0">{{ eventMeta(event) }}</p>
@@ -175,14 +274,25 @@ watch(
                       </p>
                     </div>
                   </div>
-                  <!-- Registration itself arrives with the registration API. -->
                   <button
-                    v-if="eventState(event) === EVENT_STATE.OPEN"
-                    class="btn btn-sm btn-success align-self-start"
+                    v-if="canRegister(event)"
+                    class="btn btn-sm btn-success align-self-start text-nowrap"
                     type="button"
-                    disabled
+                    :aria-label="`Register for ${event.title}`"
+                    @click="openRegistration(event)"
                   >
                     Register
+                  </button>
+                  <button
+                    v-else-if="canCancel(event)"
+                    :id="`cancel-${event.id}`"
+                    class="btn btn-sm btn-outline-danger align-self-start text-nowrap"
+                    type="button"
+                    :aria-label="`Cancel registration for ${event.title}`"
+                    :disabled="cancellingId === event.id"
+                    @click="cancel(event)"
+                  >
+                    {{ cancellingId === event.id ? 'Cancelling...' : 'Cancel registration' }}
                   </button>
                 </div>
               </div>
@@ -191,5 +301,12 @@ watch(
         </div>
       </div>
     </section>
+
+    <RegistrationDialog
+      :event="registeringEvent"
+      @registered="onRegistered"
+      @full="onFull"
+      @close="registeringEvent = null"
+    />
   </div>
 </template>
