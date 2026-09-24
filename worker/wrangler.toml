@@ -8,6 +8,8 @@ enabled = true
 [vars]
 FIREBASE_PROJECT_ID = "ecostride-82c87"
 ALLOWED_ORIGINS = "https://ecostride-82c87.web.app,https://ecostride-82c87.firebaseapp.com,http://localhost:5173,http://localhost:5175"
+# Nominatim's usage policy requires a User-Agent that identifies the app.
+NOMINATIM_USER_AGENT = "EcoStride/1.0 (+https://ecostride-82c87.web.app)"
 BREVO_SENDER_EMAIL = "yzha1299@student.monash.edu"
 
 # Secrets (never in this file) - set with `npx wrangler secret put <NAME>`:
@@ -15,3 +17,4 @@ BREVO_SENDER_EMAIL = "yzha1299@student.monash.edu"
 #   BREVO_API_KEY             Brevo API v3 key (SMTP & API > API keys)
 #   BREVO_SENDER_EMAIL        sender address verified in Brevo (Senders & IPs);
 #                             a secret rather than a var so it stays out of the repo
+#   ORS_API_KEY               OpenRouteService key (openrouteservice.org > Dashboard > Tokens)

@@ -4,12 +4,14 @@
 import { createEmailSender } from './core/email.js'
 import { ApiError, invalidRequest, notFound } from './core/errors.js'
 import { createFirestore } from './core/firestore.js'
+import { createMapServices } from './core/maps.js'
 import { bearerToken, verifyIdToken } from './core/idToken.js'
 import { getAccessToken, parseServiceAccount } from './core/serviceAccount.js'
 import { validateBody } from './core/validate.js'
 import { me } from './handlers/me.js'
 import { cancelRegistration, cancelSchema, register, registerSchema } from './handlers/registrations.js'
 import { emailRoster, rosterEmailSchema } from './handlers/rosterEmail.js'
+import { geoDirections, geoDirectionsSchema, geoSearch, geoSearchSchema } from './handlers/geo.js'
 import {
   EMAIL_REGISTRANTS_MAX_BODY_BYTES,
   emailRegistrants,
@@ -31,6 +33,8 @@ const ROUTES = {
     schema: emailRegistrantsSchema,
     maxBodyBytes: EMAIL_REGISTRANTS_MAX_BODY_BYTES,
   },
+  'POST /geo/search': { handler: geoSearch, auth: true, schema: geoSearchSchema },
+  'POST /geo/directions': { handler: geoDirections, auth: true, schema: geoDirectionsSchema },
 }
 
 function allowedOrigin(request, env) {
@@ -95,6 +99,7 @@ function buildDeps(env) {
       },
     }),
     email: createEmailSender({ apiKey: env.BREVO_API_KEY, senderEmail: env.BREVO_SENDER_EMAIL }),
+    maps: createMapServices({ orsApiKey: env.ORS_API_KEY, userAgent: env.NOMINATIM_USER_AGENT }),
   }
 }
 

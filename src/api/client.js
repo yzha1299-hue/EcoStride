@@ -81,3 +81,12 @@ export const emailRegistrants = (eventId, { subject, message, attachment }) =>
       attachmentData: attachment?.base64,
     },
   })
+
+export const geoSearch = (query) => apiFetch('/geo/search', { method: 'POST', body: { query } })
+
+// `profile`: 'foot-walking' or 'cycling-regular'.
+export const geoDirections = ({ from, to, profile }) =>
+  apiFetch('/geo/directions', {
+    method: 'POST',
+    body: { fromLat: from.lat, fromLng: from.lng, toLat: to.lat, toLng: to.lng, profile },
+  })

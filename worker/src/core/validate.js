@@ -57,6 +57,17 @@ export function validateBody(schema, body) {
         throw invalidRequest(`${key} must be at most ${rule.max}.`)
       }
       result[key] = value
+    } else if (rule.type === 'number') {
+      if (typeof value !== 'number' || !Number.isFinite(value)) {
+        throw invalidRequest(`${key} must be a number.`)
+      }
+      if (rule.min !== undefined && value < rule.min) {
+        throw invalidRequest(`${key} must be at least ${rule.min}.`)
+      }
+      if (rule.max !== undefined && value > rule.max) {
+        throw invalidRequest(`${key} must be at most ${rule.max}.`)
+      }
+      result[key] = value
     } else if (rule.type === 'boolean') {
       if (typeof value !== 'boolean') {
         throw invalidRequest(`${key} must be true or false.`)
