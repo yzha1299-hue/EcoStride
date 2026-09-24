@@ -35,11 +35,64 @@ service cloud.firestore {
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Events are visible to every signed-in user. Writes are not granted here:
-    // creation/editing is added for club members separately, and the
-    // registeredCount is only ever changed by the server (the API Worker).
+    // Events: visible to every signed-in user; club members create them and only
+    // their creator can edit, cancel or (while nobody is registered) delete them.
+    // Roles live in users/{uid} and can never be changed by the client (see
+    // above), so reading the role here is a trustworthy permission check.
+    function isClubMember() {
+      return request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'clubMember';
+    }
+
+    function isText(value, minSize, maxSize) {
+      return value is string && value.size() >= minSize && value.size() <= maxSize;
+    }
+
+    // The shape every stored event must have. The form checks the same things
+    // for friendly messages; this is the check that can't be bypassed.
+    function isValidEvent(data) {
+      return data.keys().hasOnly(['title', 'type', 'description', 'venue', 'address', 'lat', 'lng',
+          'startsAt', 'endsAt', 'capacity', 'registeredCount', 'access', 'clubName', 'status',
+          'createdBy', 'createdAt'])
+        && data.keys().hasAll(['title', 'type', 'venue', 'address', 'startsAt', 'endsAt',
+          'capacity', 'registeredCount', 'status', 'createdBy'])
+        && isText(data.title, 1, 120)
+        && isText(data.type, 1, 60)
+        && isText(data.venue, 1, 120)
+        && isText(data.address, 1, 200)
+        && isText(data.get('description', ''), 0, 2000)
+        && isText(data.get('clubName', ''), 0, 120)
+        && data.get('access', []) is list && data.get('access', []).size() <= 10
+        && data.get('lat', 0) is number && data.get('lng', 0) is number
+        && data.capacity is int && data.capacity >= 1 && data.capacity <= 1000
+        && data.startsAt is timestamp && data.endsAt is timestamp
+        && data.endsAt > data.startsAt
+        && data.status in ['open', 'cancelled'];
+    }
+
     match /events/{eventId} {
       allow read: if request.auth != null;
+      allow create: if isClubMember()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.registeredCount == 0
+        && request.resource.data.status == 'open'
+        && isValidEvent(request.resource.data)
+        && request.resource.data.startsAt > request.time
+        && request.resource.data.createdAt == request.time;
+      // registeredCount is only ever changed by the server alongside the
+      // registration documents, so the two can't drift apart.
+      // A cancelled event is final: registrants may already have been told.
+      allow update: if request.auth != null
+        && resource.data.createdBy == request.auth.uid
+        && resource.data.status != 'cancelled'
+        && !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['createdBy', 'registeredCount', 'createdAt'])
+        && request.resource.data.capacity >= resource.data.registeredCount
+        && isValidEvent(request.resource.data);
+      // Once anyone has registered, the event can only be cancelled.
+      allow delete: if request.auth != null
+        && resource.data.createdBy == request.auth.uid
+        && resource.data.registeredCount == 0;
     }
 
     match /{document=**} {

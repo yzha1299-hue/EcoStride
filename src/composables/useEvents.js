@@ -3,7 +3,7 @@ import { collection, getDocs, getFirestore, query, Timestamp, where } from 'fire
 
 // Firestore Timestamps become plain Dates at this boundary so the rest of the
 // app (and the shared event-state logic) never deals with Firestore types.
-function toEvent(snapshot) {
+export function toEvent(snapshot) {
   const data = snapshot.data()
   return {
     id: snapshot.id,
@@ -14,9 +14,11 @@ function toEvent(snapshot) {
   }
 }
 
-// Events that haven't finished yet, soonest first. Finished events drop off the
-// list; ones already underway stay (shown as closed for registration).
-export function useEvents() {
+// Default: events that haven't finished yet, soonest first. Finished events drop
+// off the list; ones already underway stay (shown as closed for registration).
+// With `createdBy`: every event that user created, past ones included, for
+// managing them.
+export function useEvents({ createdBy } = {}) {
   const events = ref([])
   const loading = ref(true)
   const error = ref('')
@@ -25,9 +27,10 @@ export function useEvents() {
     loading.value = true
     error.value = ''
     try {
-      const snapshot = await getDocs(
-        query(collection(getFirestore(), 'events'), where('endsAt', '>=', Timestamp.now())),
-      )
+      const filter = createdBy
+        ? where('createdBy', '==', createdBy)
+        : where('endsAt', '>=', Timestamp.now())
+      const snapshot = await getDocs(query(collection(getFirestore(), 'events'), filter))
       events.value = snapshot.docs.map(toEvent).sort((a, b) => a.startsAt - b.startsAt)
     } catch {
       error.value = 'Unable to load events right now. Please try again.'

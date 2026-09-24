@@ -4,6 +4,7 @@ import ActiveTravelView from '../views/ActiveTravelView.vue'
 import ClubsView from '../views/ClubsView.vue'
 import EventsView from '../views/EventsView.vue'
 import ManageEventsView from '../views/ManageEventsView.vue'
+import EventFormView from '../views/EventFormView.vue'
 import ImpactView from '../views/ImpactView.vue'
 import FirebaseSigninView from '../views/FirebaseSigninView.vue'
 import FirebaseRegisterView from '../views/FirebaseRegisterView.vue'
@@ -41,6 +42,18 @@ const router = createRouter({
       path: '/events/manage',
       name: 'events-manage',
       component: ManageEventsView,
+      meta: { requiresAuth: true, roles: [ROLES.CLUB_MEMBER] },
+    },
+    {
+      path: '/events/manage/new',
+      name: 'event-create',
+      component: EventFormView,
+      meta: { requiresAuth: true, roles: [ROLES.CLUB_MEMBER] },
+    },
+    {
+      path: '/events/manage/:id/edit',
+      name: 'event-edit',
+      component: EventFormView,
       meta: { requiresAuth: true, roles: [ROLES.CLUB_MEMBER] },
     },
     {

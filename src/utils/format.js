@@ -45,6 +45,32 @@ export function formatLongDate(date) {
   return longDate.format(date)
 }
 
+// The Melbourne calendar date and time of an instant, in the formats
+// <input type="date"> and <input type="time"> use: { date: '2026-10-04', time: '09:30' }.
+export function toMelbourneInputs(date) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: MELBOURNE_TZ,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+      .formatToParts(date)
+      .map((part) => [part.type, part.value]),
+  )
+  return { date: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${parts.minute}` }
+}
+
+// Inverse of toMelbourneInputs: form values typed in Melbourne time -> Date.
+export function fromMelbourneInputs(dateValue, timeValue) {
+  const [year, month, day] = dateValue.split('-').map(Number)
+  const [hour, minute] = timeValue.split(':').map(Number)
+  return melbourneTimeToDate({ year, month, day, hour, minute })
+}
+
 // Milliseconds Melbourne is ahead of UTC at a given instant (10 or 11 hours).
 function melbourneOffsetMs(instant) {
   const parts = Object.fromEntries(
