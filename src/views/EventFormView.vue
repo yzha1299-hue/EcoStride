@@ -9,9 +9,11 @@ import {
   getDoc,
   getFirestore,
   serverTimestamp,
+  deleteField,
   Timestamp,
   updateDoc,
 } from 'firebase/firestore'
+import { geoSearch } from '../api/client'
 import { user } from '../auth/authState'
 import { toEvent } from '../composables/useEvents'
 import { toMelbourneInputs } from '../utils/format'
@@ -68,6 +70,9 @@ onMounted(async () => {
       capacity: String(event.capacity),
       access: [...(event.access ?? [])],
       clubName: event.clubName ?? '',
+      lat: typeof event.lat === 'number' ? event.lat : null,
+      lng: typeof event.lng === 'number' ? event.lng : null,
+      locationLabel: typeof event.lat === 'number' ? 'the saved location' : '',
     })
   } catch {
     loadError.value = 'Unable to load this event right now. Please try again.'
@@ -75,6 +80,51 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+// Venue address -> map location: search, then pick one of the matches.
+const addressResults = ref([])
+const findingAddress = ref(false)
+const addressStatus = ref('')
+const addressResultsEl = ref(null)
+
+// Typing a new address makes the old map location wrong.
+function onAddressEdited() {
+  if (form.lat !== null) {
+    Object.assign(form, { lat: null, lng: null, locationLabel: '' })
+  }
+  addressResults.value = []
+}
+
+async function findAddress() {
+  const query = form.address.trim()
+  addressResults.value = []
+  if (!query) {
+    addressStatus.value = 'Type the venue address first.'
+    return
+  }
+  findingAddress.value = true
+  addressStatus.value = 'Searching...'
+  try {
+    const { places } = await geoSearch(query)
+    addressResults.value = places
+    addressStatus.value = places.length
+      ? `${places.length} match${places.length === 1 ? '' : 'es'} found. Choose the right one below.`
+      : 'No matches in Victoria. Try adding the suburb or postcode.'
+    if (places.length) {
+      await nextTick()
+      addressResultsEl.value?.querySelector('input')?.focus()
+    }
+  } catch (searchError) {
+    addressStatus.value = searchError.message
+  } finally {
+    findingAddress.value = false
+  }
+}
+
+function chooseLocation(place) {
+  Object.assign(form, { lat: place.lat, lng: place.lng, locationLabel: place.label })
+  addressStatus.value = `Map location set: ${place.label}.`
+}
 
 function fieldAttrs(field) {
   return {
@@ -107,7 +157,9 @@ async function save() {
   saving.value = true
   try {
     if (isEdit.value) {
-      await updateDoc(doc(db, 'events', eventId.value), stored)
+      // No location chosen (e.g. the address changed): remove the old one.
+      const location = 'lat' in stored ? {} : { lat: deleteField(), lng: deleteField() }
+      await updateDoc(doc(db, 'events', eventId.value), { ...stored, ...location })
     } else {
       await addDoc(collection(db, 'events'), {
         ...stored,
@@ -213,8 +265,32 @@ async function deleteEvent() {
         </div>
         <div class="col-12 col-md-7">
           <label class="form-label" for="address">Venue address</label>
-          <input id="address" v-model="form.address" class="form-control" :class="{ 'is-invalid': errors.address }" v-bind="fieldAttrs('address')" maxlength="200" autocomplete="street-address" />
-          <div v-if="errors.address" id="address-error" class="invalid-feedback">{{ errors.address }}</div>
+          <div class="input-group has-validation">
+            <input id="address" v-model="form.address" class="form-control" :class="{ 'is-invalid': errors.address }" v-bind="fieldAttrs('address')" maxlength="200" autocomplete="street-address" @input="onAddressEdited" />
+            <button class="btn btn-outline-secondary" type="button" :disabled="findingAddress" @click="findAddress">
+              Find on map
+            </button>
+            <div v-if="errors.address" id="address-error" class="invalid-feedback">{{ errors.address }}</div>
+          </div>
+          <p class="form-text mb-0" role="status">
+            <template v-if="addressStatus">{{ addressStatus }}</template>
+            <template v-else-if="form.lat !== null">Map location set: {{ form.locationLabel }}.</template>
+            <template v-else>Optional, but recommended: use "Find on map" so the event appears on the map with directions.</template>
+          </p>
+          <fieldset v-if="addressResults.length" ref="addressResultsEl" class="border rounded-3 p-2 mt-2">
+            <legend class="small fw-semibold float-none w-auto px-1 mb-1">Choose the matching place</legend>
+            <div v-for="(place, index) in addressResults" :key="`${place.lat},${place.lng}`" class="form-check">
+              <input
+                :id="`place-${index}`"
+                class="form-check-input"
+                type="radio"
+                name="venue-place"
+                :checked="form.lat === place.lat && form.lng === place.lng"
+                @change="chooseLocation(place)"
+              />
+              <label class="form-check-label small" :for="`place-${index}`">{{ place.label }}</label>
+            </div>
+          </fieldset>
         </div>
       </div>
 

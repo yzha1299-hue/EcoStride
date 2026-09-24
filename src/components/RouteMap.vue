@@ -15,6 +15,8 @@ const props = defineProps({
   // The searched place or the user's location: { lat, lng, label }.
   origin: { type: Object, default: null },
   label: { type: String, required: true },
+  // Screen-reader name of each marker: "<prefix> <name>".
+  markerPrefix: { type: String, default: 'Start of' },
   // Directions to show on top of the routes: [[lat, lng], ...] or null.
   directionsLine: { type: Array, default: null },
   // Nearby facilities: [{ id, category, lat, lng, label }]; see AMENITY_STYLES.
@@ -82,7 +84,7 @@ function showSelection() {
     const element = marker.getElement()
     element.classList.toggle('is-selected', selected)
     element.setAttribute('aria-pressed', String(selected))
-    element.setAttribute('aria-label', `Start of ${route.name}`)
+    element.setAttribute('aria-label', `${props.markerPrefix} ${route.name}`)
     marker.setZIndexOffset(selected ? 1000 : 0)
     line?.setStyle(selected ? SELECTED_LINE_STYLE : LINE_STYLE)
     if (selected) line?.bringToFront()

@@ -9,6 +9,7 @@ import { formatEventDay, formatLongDate, formatTimeRange } from '../utils/format
 import { EVENT_STATE, eventState, placesLeft } from '../../shared/eventState'
 import StarRating from '../components/StarRating.vue'
 import RegistrationDialog from '../components/RegistrationDialog.vue'
+import EventsMap from '../components/EventsMap.vue'
 
 const { events, loading, error } = useEvents()
 const { isAuthenticated } = useAuth()
@@ -18,6 +19,8 @@ const query = ref('')
 const type = ref('All')
 const access = ref('Any')
 const myEventsOnly = ref(false)
+// 'list' or 'map'
+const view = ref('list')
 
 const typeOptions = computed(() => ['All', ...new Set(events.value.map((event) => event.type))])
 const accessOptions = computed(() => [
@@ -210,6 +213,20 @@ watch(
           {{ announcement }}
         </p>
 
+        <div class="btn-group mb-3" role="group" aria-label="Show events as">
+          <button
+            v-for="option in ['list', 'map']"
+            :key="option"
+            type="button"
+            class="btn btn-sm"
+            :class="view === option ? 'btn-success' : 'btn-outline-success'"
+            :aria-pressed="view === option ? 'true' : 'false'"
+            @click="view = option"
+          >
+            {{ option === 'list' ? 'List' : 'Map' }}
+          </button>
+        </div>
+
         <p v-if="loading" class="text-muted">Loading events...</p>
         <p v-else-if="error" class="text-danger">{{ error }}</p>
         <p v-else-if="!filteredEvents.length && myEventsOnly" class="text-muted">
@@ -219,6 +236,8 @@ watch(
           No events match "{{ query }}".
         </p>
         <p v-else-if="!filteredEvents.length" class="text-muted">No events match your filters.</p>
+
+        <EventsMap v-else-if="view === 'map'" :events="filteredEvents" />
 
         <div v-else class="d-flex flex-column gap-3">
           <article v-for="event in filteredEvents" :key="event.id" class="card shadow-sm">

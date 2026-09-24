@@ -21,6 +21,10 @@ export function emptyEventForm() {
     capacity: '',
     access: [],
     clubName: '',
+    // Map location picked from an address search; null until one is chosen.
+    lat: null,
+    lng: null,
+    locationLabel: '',
   }
 }
 
@@ -88,5 +92,6 @@ export function eventFieldsFromForm(form) {
     capacity: Number(form.capacity),
     access: ACCESS_OPTIONS.filter((option) => form.access.includes(option)),
     clubName: form.clubName.trim(),
+    ...(form.lat !== null && form.lng !== null ? { lat: form.lat, lng: form.lng } : {}),
   }
 }

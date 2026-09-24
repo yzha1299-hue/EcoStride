@@ -3,6 +3,7 @@ import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing'
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -193,6 +194,16 @@ describe('editing events', () => {
     await assertFails(updateDoc(ref, { featured: true }))
     // The seeded event starts in a week, so ending now would end before it starts.
     await assertFails(updateDoc(ref, { endsAt: Timestamp.now() }))
+  })
+
+  it("lets the creator set, change or remove the venue's map location", async () => {
+    await seedProfile('clara', 'clubMember')
+    await seedOwnedEvent('e1', 'clara')
+    const ref = doc(signedInAs(env, 'clara'), 'events/e1')
+
+    await assertSucceeds(updateDoc(ref, { lat: -37.7667, lng: 144.9606 }))
+    await assertSucceeds(updateDoc(ref, { lat: deleteField(), lng: deleteField() }))
+    await assertFails(updateDoc(ref, { lat: 'north', lng: 144.9606 }))
   })
 
   it('lets the creator cancel an event but never reopen it', async () => {
