@@ -1,6 +1,6 @@
 import { EVENT_STATE, eventState } from '../../../shared/eventState.js'
 import { ApiError, notFound } from '../core/errors.js'
-import { encodeFields, PreconditionFailed } from '../core/firestore.js'
+import { encodeFields, retryOnConflict } from '../core/firestore.js'
 import { EVENT_ID } from '../core/validate.js'
 
 // Registering and cancelling are the only ways registeredCount changes, and
@@ -16,24 +16,13 @@ import { EVENT_ID } from '../core/validate.js'
 // commit succeeds: it changes the event's updateTime, so the second commit's
 // precondition fails and nothing of it is written. The loser re-reads, now sees
 // the event full, and gets EVENT_FULL. The count can never exceed capacity.
-const MAX_RETRIES = 3
-
 const eventCancelled = () => new ApiError(409, 'EVENT_CANCELLED', 'This event has been cancelled.')
 const eventClosed = () =>
   new ApiError(409, 'EVENT_CLOSED', 'This event has already started, so registration is closed.')
 
-async function withRetries(attempt) {
-  for (let tries = 0; tries <= MAX_RETRIES; tries += 1) {
-    try {
-      return await attempt()
-    } catch (error) {
-      if (!(error instanceof PreconditionFailed)) {
-        throw error
-      }
-    }
-  }
-  throw new ApiError(409, 'CONFLICT', 'Lots of people are registering right now. Please try again.')
-}
+// Retried up to 3 times from a fresh read when a commit loses a race.
+const withRetries = (attempt) =>
+  retryOnConflict(attempt, () => new ApiError(409, 'CONFLICT', 'Lots of people are registering right now. Please try again.'))
 
 async function readEventAndRegistration(firestore, eventId, uid) {
   const eventPath = `events/${eventId}`

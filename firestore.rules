@@ -107,6 +107,13 @@ service cloud.firestore {
       }
     }
 
+    // Bulk-email counters (per event per Melbourne day), used by the API
+    // Worker to enforce the daily limit. Server-only: no client may read or
+    // reset them.
+    match /emailRateLimits/{limitId} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

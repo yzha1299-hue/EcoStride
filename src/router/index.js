@@ -6,6 +6,7 @@ import EventsView from '../views/EventsView.vue'
 import ManageEventsView from '../views/ManageEventsView.vue'
 import EventFormView from '../views/EventFormView.vue'
 import RosterView from '../views/RosterView.vue'
+import EmailRegistrantsView from '../views/EmailRegistrantsView.vue'
 import ImpactView from '../views/ImpactView.vue'
 import FirebaseSigninView from '../views/FirebaseSigninView.vue'
 import FirebaseRegisterView from '../views/FirebaseRegisterView.vue'
@@ -61,6 +62,12 @@ const router = createRouter({
       path: '/events/manage/:id/roster',
       name: 'event-roster',
       component: RosterView,
+      meta: { requiresAuth: true, roles: [ROLES.CLUB_MEMBER] },
+    },
+    {
+      path: '/events/manage/:id/email',
+      name: 'event-email',
+      component: EmailRegistrantsView,
       meta: { requiresAuth: true, roles: [ROLES.CLUB_MEMBER] },
     },
     {

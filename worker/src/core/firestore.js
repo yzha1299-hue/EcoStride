@@ -44,6 +44,22 @@ export function encodeFields(data) {
 // read, or already exists / no longer exists). Callers re-read and retry.
 export class PreconditionFailed extends Error {}
 
+// Runs a read-check-commit `attempt`, re-running it from a fresh read when its
+// commit's precondition fails (someone else changed the data in between), up
+// to `retries` more times. Then gives up with `conflictError()`.
+export async function retryOnConflict(attempt, conflictError, retries = 3) {
+  for (let tries = 0; tries <= retries; tries += 1) {
+    try {
+      return await attempt()
+    } catch (error) {
+      if (!(error instanceof PreconditionFailed)) {
+        throw error
+      }
+    }
+  }
+  throw conflictError()
+}
+
 export function createFirestore({ projectId, getToken }) {
   const base = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`
 

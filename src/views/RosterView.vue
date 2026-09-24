@@ -2,14 +2,14 @@
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { collection, doc, getDoc, getDocs, getFirestore } from 'firebase/firestore'
-import { emailVerified, refreshVerification, sendVerification, user } from '../auth/authState'
-import { authErrorMessage } from '../auth/authErrors'
+import { emailVerified, user } from '../auth/authState'
 import { emailRosterToMe } from '../api/client'
 import { toEvent } from '../composables/useEvents'
 import { useTable } from '../composables/useTable'
 import { formatDateTime, formatLongDate, formatTimeRange } from '../utils/format'
 import DataTable from '../components/DataTable.vue'
 import TableExport from '../components/TableExport.vue'
+import VerifyEmailPrompt from '../components/VerifyEmailPrompt.vue'
 
 // The registrants of one of the signed-in club member's events. Firestore rules
 // only let the event's creator read its registrations; the check here is just
@@ -56,42 +56,18 @@ const emailing = ref(false)
 const emailStatus = ref('')
 const emailFailed = ref(false)
 
-// A sign-in token issued before the user verified still says "unverified";
-// if the server rejects it for that, refresh the account and try once more.
-async function sendRosterEmail() {
-  try {
-    return await emailRosterToMe(route.params.id)
-  } catch (error) {
-    if (error.code === 'EMAIL_NOT_VERIFIED' && (await refreshVerification())) {
-      return emailRosterToMe(route.params.id)
-    }
-    throw error
-  }
-}
-
 async function emailRoster() {
   emailing.value = true
   emailStatus.value = ''
   emailFailed.value = false
   try {
-    const { sentTo, count } = await sendRosterEmail()
+    const { sentTo, count } = await emailRosterToMe(route.params.id)
     emailStatus.value = `Roster (${count} registrant${count === 1 ? '' : 's'}) sent to ${sentTo}.`
   } catch (error) {
     emailFailed.value = true
     emailStatus.value = error.message
   } finally {
     emailing.value = false
-  }
-}
-
-async function resendVerification() {
-  try {
-    await sendVerification()
-    emailStatus.value = `Verification email sent to ${user.value.email}. Open the link, then choose "I've verified" in the banner at the top.`
-    emailFailed.value = false
-  } catch (error) {
-    emailStatus.value = authErrorMessage(error)
-    emailFailed.value = true
   }
 }
 
@@ -137,16 +113,17 @@ const table = useTable(
       </p>
 
       <section class="border rounded-3 p-3 mb-4" aria-labelledby="roster-email-heading">
-        <h2 id="roster-email-heading" class="h6 fw-bold">Email me the roster</h2>
-        <template v-if="!emailVerified">
-          <p class="small mb-2">
-            Email features are locked until you verify your email address, so registrant details only go to an
-            address you've proved is yours.
-          </p>
-          <button class="btn btn-outline-secondary btn-sm" type="button" @click="resendVerification">
-            Resend verification email
-          </button>
-        </template>
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+          <h2 id="roster-email-heading" class="h6 fw-bold">Email</h2>
+          <RouterLink
+            v-if="registrations.length"
+            class="btn btn-success btn-sm"
+            :to="{ name: 'event-email', params: { id: route.params.id } }"
+          >
+            Email all registrants
+          </RouterLink>
+        </div>
+        <VerifyEmailPrompt v-if="!emailVerified" />
         <template v-else>
           <p class="small text-muted mb-2">
             Sends the full roster as a CSV file to your own address, {{ user?.email }}.

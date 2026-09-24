@@ -135,7 +135,12 @@ async function cancelEvent() {
   saving.value = true
   try {
     await updateDoc(doc(db, 'events', eventId.value), { status: 'cancelled' })
-    router.push({ name: 'events-manage', query: { cancelled: existing.value.title } })
+    // With people registered, go straight to a pre-filled notice for them.
+    router.push(
+      registeredCount.value
+        ? { name: 'event-email', params: { id: eventId.value }, query: { cancelled: '1' } }
+        : { name: 'events-manage', query: { cancelled: existing.value.title } },
+    )
   } catch {
     status.value = "Couldn't cancel the event. Please try again."
   } finally {

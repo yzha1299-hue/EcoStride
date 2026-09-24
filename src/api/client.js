@@ -1,4 +1,5 @@
 import { getAuth } from 'firebase/auth'
+import { refreshVerification } from '../auth/authState'
 
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 
@@ -12,7 +13,20 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiFetch(path, { method = 'GET', body } = {}) {
+export async function apiFetch(path, options = {}) {
+  try {
+    return await send(path, options)
+  } catch (error) {
+    // A token issued before the user verified their email still says
+    // "unverified". If the account is verified by now, a fresh token fixes it.
+    if (error.code === 'EMAIL_NOT_VERIFIED' && (await refreshVerification().catch(() => false))) {
+      return send(path, options)
+    }
+    throw error
+  }
+}
+
+async function send(path, { method = 'GET', body } = {}) {
   const currentUser = getAuth().currentUser
   if (!currentUser) {
     throw new ApiError(401, 'UNAUTHENTICATED', 'Sign in to continue.')
@@ -53,3 +67,17 @@ export const cancelRegistration = (eventId) =>
   apiFetch('/registrations/cancel', { method: 'POST', body: { eventId } })
 
 export const emailRosterToMe = (eventId) => apiFetch('/events/roster-email', { method: 'POST', body: { eventId } })
+
+// `attachment`: optional { name, type, base64 }.
+export const emailRegistrants = (eventId, { subject, message, attachment }) =>
+  apiFetch('/events/email-registrants', {
+    method: 'POST',
+    body: {
+      eventId,
+      subject,
+      message,
+      attachmentName: attachment?.name,
+      attachmentType: attachment?.type,
+      attachmentData: attachment?.base64,
+    },
+  })

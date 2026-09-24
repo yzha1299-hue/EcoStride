@@ -2,16 +2,19 @@ import { ApiError } from './errors.js'
 import { fetchUpstream } from './upstream.js'
 
 // The one way the API sends email. Handlers call
-//   sendEmail({ recipients: [{ email, name? }], subject, html, attachments: [{ name, content }] })
+//   sendEmail({ recipients: [{ email, name? }], subject, html, attachments, replyTo? })
 // and never see the provider, so swapping Brevo for another service means
-// changing only this file. `content` is text (e.g. a CSV) or bytes.
+// changing only this file. Each attachment is { name, content } with text
+// (e.g. a CSV) or bytes, or { name, base64 } when it is already encoded.
 //
 // With several recipients each gets their own copy (Brevo "message
 // versions"), so nobody sees anyone else's address.
 const BREVO_URL = 'https://api.brevo.com/v3/smtp/email'
+// Recipients per Brevo request; larger lists go out in several requests.
+const BATCH_SIZE = 500
 
 export function createEmailSender({ apiKey, senderEmail, senderName = 'EcoStride' }) {
-  async function sendEmail({ recipients, subject, html, attachments = [] }) {
+  async function sendEmail({ recipients, subject, html, attachments = [], replyTo }) {
     if (!apiKey || !senderEmail) {
       throw new ApiError(503, 'EMAIL_UNAVAILABLE', "Email isn't set up on the server yet.")
     }
@@ -24,25 +27,33 @@ export function createEmailSender({ apiKey, senderEmail, senderName = 'EcoStride
       subject,
       htmlContent: html,
     }
-    if (attachments.length) {
-      message.attachment = attachments.map(({ name, content }) => ({ name, content: toBase64(content) }))
+    if (replyTo) {
+      message.replyTo = replyTo
     }
-    if (recipients.length === 1) {
-      message.to = recipients
-    } else {
-      message.messageVersions = recipients.map((recipient) => ({ to: [recipient] }))
+    if (attachments.length) {
+      message.attachment = attachments.map(({ name, content, base64 }) => ({
+        name,
+        content: base64 ?? toBase64(content),
+      }))
     }
 
-    await fetchUpstream(
-      'The email service',
-      BREVO_URL,
-      {
-        method: 'POST',
-        headers: { 'api-key': apiKey, 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify(message),
-      },
-      { timeoutMs: 15000 },
-    )
+    for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
+      const batch = recipients.slice(i, i + BATCH_SIZE)
+      const addressed =
+        batch.length === 1
+          ? { ...message, to: batch }
+          : { ...message, messageVersions: batch.map((recipient) => ({ to: [recipient] })) }
+      await fetchUpstream(
+        'The email service',
+        BREVO_URL,
+        {
+          method: 'POST',
+          headers: { 'api-key': apiKey, 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify(addressed),
+        },
+        { timeoutMs: 15000 },
+      )
+    }
   }
 
   return { sendEmail }

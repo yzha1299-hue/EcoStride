@@ -10,6 +10,11 @@ import { validateBody } from './core/validate.js'
 import { me } from './handlers/me.js'
 import { cancelRegistration, cancelSchema, register, registerSchema } from './handlers/registrations.js'
 import { emailRoster, rosterEmailSchema } from './handlers/rosterEmail.js'
+import {
+  EMAIL_REGISTRANTS_MAX_BODY_BYTES,
+  emailRegistrants,
+  emailRegistrantsSchema,
+} from './handlers/emailRegistrants.js'
 
 const DEFAULT_MAX_BODY_BYTES = 16 * 1024
 
@@ -20,6 +25,12 @@ const ROUTES = {
   'POST /registrations': { handler: register, auth: true, schema: registerSchema },
   'POST /registrations/cancel': { handler: cancelRegistration, auth: true, schema: cancelSchema },
   'POST /events/roster-email': { handler: emailRoster, auth: true, schema: rosterEmailSchema },
+  'POST /events/email-registrants': {
+    handler: emailRegistrants,
+    auth: true,
+    schema: emailRegistrantsSchema,
+    maxBodyBytes: EMAIL_REGISTRANTS_MAX_BODY_BYTES,
+  },
 }
 
 function allowedOrigin(request, env) {
