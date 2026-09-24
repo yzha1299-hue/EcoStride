@@ -35,7 +35,6 @@ const DATA_SOURCES = {
     ],
   },
   activeTravel: {
-    filters: ['Well-lit paths', 'Safe corridors', 'Bike parking', 'Accessible'],
     routes: [
       {
         id: 'maribyrnong-river-trail',

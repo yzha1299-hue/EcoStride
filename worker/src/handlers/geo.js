@@ -1,4 +1,4 @@
-import { PROFILES } from '../core/maps.js'
+import { NEARBY_RADIUS_M, PROFILES } from '../core/maps.js'
 
 // Map lookups for Active Travel and the events map. They need a signed-in
 // caller, so the directions quota and Nominatim's goodwill can't be drained by
@@ -20,6 +20,22 @@ export const geoDirectionsSchema = {
   toLat: LAT,
   toLng: LNG,
   profile: { type: 'string', required: true, maxLength: 20, pattern: new RegExp(`^(${PROFILES.join('|')})$`) },
+}
+
+export const geoNearbySchema = {
+  lat: LAT,
+  lng: LNG,
+  // Optional second point: search along the line between the two.
+  endLat: { ...LAT, required: false },
+  endLng: { ...LNG, required: false },
+}
+
+export async function geoNearby({ body, deps }) {
+  const points = [{ lat: body.lat, lng: body.lng }]
+  if (body.endLat !== undefined && body.endLng !== undefined) {
+    points.push({ lat: body.endLat, lng: body.endLng })
+  }
+  return { radiusMetres: NEARBY_RADIUS_M, places: await deps.maps.nearby(points) }
 }
 
 export async function geoDirections({ body, deps }) {

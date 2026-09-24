@@ -112,19 +112,6 @@ body {
   margin: 0;
 }
 
-.filter-chip {
-  background: var(--es-green-soft);
-  color: var(--es-green-dark);
-  font-weight: 600;
-  padding: 0.5rem 0.85rem;
-}
-
-.map-panel {
-  min-height: 280px;
-  object-fit: cover;
-  background: var(--es-green-soft);
-}
-
 .progress-track {
   height: 1.5rem;
 }

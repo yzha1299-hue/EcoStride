@@ -33,3 +33,12 @@ export function formatDuration(seconds) {
   const rest = minutes % 60
   return rest ? `${hours} h ${rest} min` : `${hours} h`
 }
+
+// Nearby facility types: label, and the colour and letter used for both map
+// markers and the toggles' legend, so they're told apart without colour alone.
+// Colours keep white text at WCAG AA contrast.
+export const AMENITY_STYLES = {
+  bikeParking: { label: 'Bike parking', letter: 'P', color: '#0b5ed7' },
+  drinkingWater: { label: 'Drinking water', letter: 'W', color: '#087990' },
+  toilets: { label: 'Toilets', letter: 'T', color: '#a14a00' },
+}

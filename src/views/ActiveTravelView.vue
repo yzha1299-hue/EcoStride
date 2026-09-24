@@ -3,9 +3,9 @@ import { computed, nextTick, reactive, ref, watch } from 'vue'
 import travelImage from '../assets/card-travel.svg'
 import { useJsonData } from '../composables/useJsonData'
 import { user } from '../auth/authState'
-import { geoDirections, geoSearch } from '../api/client'
+import { geoDirections, geoNearby, geoSearch } from '../api/client'
 import { validatePostcode, validateSuburb } from '../utils/validation'
-import { distanceKm, formatDistance, formatDuration, profileForMode } from '../utils/geo'
+import { AMENITY_STYLES, distanceKm, formatDistance, formatDuration, profileForMode } from '../utils/geo'
 import RouteMap from '../components/RouteMap.vue'
 
 const { data, loading, error } = useJsonData('activeTravel')
@@ -25,7 +25,6 @@ const searchMessage = ref('')
 const selectedId = ref('')
 const announcement = ref('')
 
-const filters = computed(() => data.value?.filters ?? [])
 const allRoutes = computed(() => data.value?.routes ?? [])
 
 const suburbError = computed(() => validateSuburb(suburb.value))
@@ -249,6 +248,86 @@ async function getDirections(route) {
   }
 }
 
+// Nearby facilities for the selected route, fetched once per route (all three
+// types together) and filtered by the toggles.
+const shownAmenities = reactive({ bikeParking: false, drinkingWater: false, toilets: false })
+const nearbyByRoute = reactive({})
+const nearbyLoading = ref(false)
+const nearbyError = ref('')
+
+const selectedRoute = computed(() => allRoutes.value.find((route) => route.id === selectedId.value) ?? null)
+const anyAmenityShown = computed(() => Object.values(shownAmenities).some(Boolean))
+
+// Kept for the browser session: facilities rarely change, and the public
+// Overpass service is slow and rations requests.
+const NEARBY_CACHE_KEY = 'ecostride.nearby.v1'
+
+function readNearbyCache() {
+  try {
+    return JSON.parse(sessionStorage.getItem(NEARBY_CACHE_KEY)) ?? {}
+  } catch {
+    return {}
+  }
+}
+
+async function loadNearby() {
+  const route = selectedRoute.value
+  nearbyError.value = ''
+  if (!route || !anyAmenityShown.value || !user.value || nearbyByRoute[route.id]) return
+  const cache = readNearbyCache()
+  const withDistance = (places) =>
+    places.map((place) => ({ ...place, distanceKm: distanceKm(route.start, place) }))
+  if (cache[route.id]) {
+    nearbyByRoute[route.id] = withDistance(cache[route.id])
+    return
+  }
+  nearbyLoading.value = true
+  try {
+    const { places } = await geoNearby({ start: route.start, end: route.end })
+    nearbyByRoute[route.id] = withDistance(places)
+    try {
+      sessionStorage.setItem(NEARBY_CACHE_KEY, JSON.stringify({ ...cache, [route.id]: places }))
+    } catch {
+      // Storage full or blocked: it's just fetched again next time.
+    }
+  } catch (nearbyFailure) {
+    nearbyError.value = nearbyFailure.message
+  } finally {
+    nearbyLoading.value = false
+  }
+}
+
+watch([selectedId, anyAmenityShown, user], loadNearby)
+
+function amenityLabel(place) {
+  const type = AMENITY_STYLES[place.category].label
+  const details = [
+    place.capacity ? `${place.capacity} spaces` : null,
+    place.wheelchair === 'yes' ? 'wheelchair accessible' : null,
+    place.fee === 'yes' ? 'fee' : null,
+  ].filter(Boolean)
+  return `${type}: ${place.name ?? 'unnamed'}${details.length ? ` (${details.join(', ')})` : ''}`
+}
+
+// Per shown type: its places, nearest to the route start first.
+const nearbyGroups = computed(() => {
+  const places = nearbyByRoute[selectedId.value]
+  if (!places) return []
+  return Object.entries(AMENITY_STYLES)
+    .filter(([category]) => shownAmenities[category])
+    .map(([category, style]) => ({
+      category,
+      ...style,
+      places: places.filter((place) => place.category === category).sort((a, b) => a.distanceKm - b.distanceKm),
+    }))
+})
+
+const mapAmenities = computed(() =>
+  nearbyGroups.value.flatMap((group) => group.places.map((place) => ({ ...place, label: amenityLabel(place) }))),
+)
+
+const NEARBY_LIST_LIMIT = 5
+
 // Selecting from the list highlights and centres the marker; selecting a
 // marker highlights the card and brings it into view.
 async function selectRoute(id, { fromMap = false } = {}) {
@@ -350,10 +429,22 @@ async function selectRoute(id, { fromMap = false } = {}) {
         </div>
         <p v-if="searchMessage" class="small text-danger mt-2 mb-0" role="alert">{{ searchMessage }}</p>
 
-        <div class="d-flex flex-wrap gap-2 mt-3">
-          <span v-for="filter in filters" :key="filter" class="badge rounded-pill filter-chip">
-            {{ filter }}
-          </span>
+        <div class="mt-3" role="group" aria-labelledby="amenity-toggles-label">
+          <p id="amenity-toggles-label" class="small fw-semibold mb-2">Show near the selected route (500 m)</p>
+          <div class="d-flex flex-wrap gap-2">
+            <button
+              v-for="(style, category) in AMENITY_STYLES"
+              :key="category"
+              class="btn btn-sm rounded-pill amenity-toggle"
+              :class="shownAmenities[category] ? 'btn-dark' : 'btn-outline-dark'"
+              type="button"
+              :aria-pressed="shownAmenities[category] ? 'true' : 'false'"
+              @click="shownAmenities[category] = !shownAmenities[category]"
+            >
+              <span class="amenity-swatch" :style="{ background: style.color }" aria-hidden="true">{{ style.letter }}</span>
+              {{ style.label }}
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -369,9 +460,50 @@ async function selectRoute(id, { fromMap = false } = {}) {
               :origin="origin"
               label="Map of walking and cycling routes. Route markers can be selected with Enter."
               :directions-line="trip?.coordinates ?? null"
+              :amenities="mapAmenities"
               @select="(id) => selectRoute(id, { fromMap: true })"
             />
             <p v-if="trailNote" class="small text-muted mt-2 mb-0">{{ trailNote }}</p>
+
+            <section v-if="anyAmenityShown" class="mt-3" aria-labelledby="nearby-heading" aria-live="polite">
+              <h2 id="nearby-heading" class="h6 fw-bold mb-2">
+                Nearby{{ selectedRoute ? ` ${selectedRoute.name}` : '' }}
+              </h2>
+              <p v-if="!user" class="small text-muted mb-0">
+                <RouterLink :to="{ name: 'FireLogin', query: { redirect: '/active-travel' } }">Sign in</RouterLink>
+                to see bike parking, drinking water and toilets near a route.
+              </p>
+              <p v-else-if="!selectedRoute" class="small text-muted mb-0">
+                Select a route (with "Show on map" or its marker) to see what's within 500 m of it.
+              </p>
+              <p v-else-if="nearbyLoading" class="small text-muted mb-0">
+                Looking for nearby facilities... this can take up to 20 seconds.
+              </p>
+              <div v-else-if="nearbyError" class="d-flex flex-wrap align-items-center gap-2">
+                <p class="small text-danger mb-0" role="alert">{{ nearbyError }}</p>
+                <button class="btn btn-outline-secondary btn-sm" type="button" @click="loadNearby">Try again</button>
+              </div>
+              <div v-else-if="nearbyGroups.length" class="row g-3">
+                <div v-for="group in nearbyGroups" :key="group.category" class="col-12 col-md-4">
+                  <p class="small fw-semibold mb-1">
+                    <span class="amenity-swatch" :style="{ background: group.color }" aria-hidden="true">{{ group.letter }}</span>
+                    {{ group.label }}: {{ group.places.length }}
+                  </p>
+                  <p v-if="!group.places.length" class="small text-muted mb-0">
+                    None found within 500 m of this route.
+                  </p>
+                  <ul v-else class="small list-unstyled mb-0">
+                    <li v-for="place in group.places.slice(0, NEARBY_LIST_LIMIT)" :key="place.id">
+                      {{ place.name ?? 'Unnamed' }}
+                      <span class="text-muted">- {{ formatDistance(place.distanceKm * 1000) }} from the start</span>
+                    </li>
+                    <li v-if="group.places.length > NEARBY_LIST_LIMIT" class="text-muted">
+                      and {{ group.places.length - NEARBY_LIST_LIMIT }} more on the map
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </section>
 
             <p v-if="tripLoading" class="small text-muted mt-3 mb-0" role="status">
               {{ tripSlow ? 'Still getting directions - the directions service is slow right now...' : 'Getting directions...' }}
@@ -472,3 +604,18 @@ async function selectRoute(id, { fromMap = false } = {}) {
     </section>
   </div>
 </template>
+
+<style scoped>
+.amenity-swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-right: 0.25rem;
+}
+</style>

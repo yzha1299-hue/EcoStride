@@ -90,3 +90,11 @@ export const geoDirections = ({ from, to, profile }) =>
     method: 'POST',
     body: { fromLat: from.lat, fromLng: from.lng, toLat: to.lat, toLng: to.lng, profile },
   })
+
+// Bike parking, drinking water and toilets near a route: within 500 m of its
+// start, or of the line from its start to its end.
+export const geoNearby = ({ start, end }) =>
+  apiFetch('/geo/nearby', {
+    method: 'POST',
+    body: { lat: start.lat, lng: start.lng, endLat: end?.lat, endLng: end?.lng },
+  })

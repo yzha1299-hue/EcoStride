@@ -2,7 +2,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { MELBOURNE_CENTRE } from '../utils/geo'
+import { AMENITY_STYLES, MELBOURNE_CENTRE } from '../utils/geo'
 
 // Interactive map of routes: a marker at each route's start (focusable, and
 // Enter selects it) and the trail drawn as a line. Leaflet manages its own
@@ -17,6 +17,8 @@ const props = defineProps({
   label: { type: String, required: true },
   // Directions to show on top of the routes: [[lat, lng], ...] or null.
   directionsLine: { type: Array, default: null },
+  // Nearby facilities: [{ id, category, lat, lng, label }]; see AMENITY_STYLES.
+  amenities: { type: Array, default: () => [] },
 })
 const emit = defineEmits(['select'])
 
@@ -25,6 +27,7 @@ let map = null
 let routeLayer = null
 let originMarker = null
 let directionsLayer = null
+let amenityLayer = null
 const layersById = new Map()
 
 const LINE_STYLE = { color: '#198754', weight: 4, opacity: 0.8 }
@@ -122,6 +125,30 @@ function drawOrigin() {
     .addTo(map)
 }
 
+// Facilities are drawn but kept out of the tab order (there can be dozens);
+// the same information is listed as text beside the map.
+function drawAmenities() {
+  amenityLayer.clearLayers()
+  for (const place of props.amenities) {
+    const style = AMENITY_STYLES[place.category]
+    const marker = L.marker([place.lat, place.lng], {
+      icon: L.divIcon({
+        className: 'amenity-marker',
+        html: `<span style="background:${style.color}">${style.letter}</span>`,
+        iconSize: [20, 20],
+        iconAnchor: [10, 10],
+      }),
+      keyboard: false,
+      title: place.label,
+    })
+      .bindTooltip(place.label)
+      .addTo(amenityLayer)
+    const element = marker.getElement()
+    element.setAttribute('role', 'img')
+    element.setAttribute('aria-label', place.label)
+  }
+}
+
 function drawDirections() {
   directionsLayer?.remove()
   directionsLayer = null
@@ -137,10 +164,12 @@ onMounted(() => {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   }).addTo(map)
   routeLayer = L.layerGroup().addTo(map)
+  amenityLayer = L.layerGroup().addTo(map)
   drawRoutes()
   drawOrigin()
   fitToOrigin()
   drawDirections()
+  drawAmenities()
 })
 
 onBeforeUnmount(() => {
@@ -158,6 +187,7 @@ watch(
   },
 )
 watch(() => props.directionsLine, drawDirections)
+watch(() => props.amenities, drawAmenities)
 watch(
   () => props.origin,
   () => {
@@ -199,6 +229,20 @@ watch(
 :deep(.route-marker.is-selected span) {
   background: #0b5ed7;
   transform: scale(1.25);
+}
+
+:deep(.amenity-marker span) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 2px solid #fff;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
 }
 
 :deep(.route-marker:focus-visible) {

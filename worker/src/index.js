@@ -11,7 +11,14 @@ import { validateBody } from './core/validate.js'
 import { me } from './handlers/me.js'
 import { cancelRegistration, cancelSchema, register, registerSchema } from './handlers/registrations.js'
 import { emailRoster, rosterEmailSchema } from './handlers/rosterEmail.js'
-import { geoDirections, geoDirectionsSchema, geoSearch, geoSearchSchema } from './handlers/geo.js'
+import {
+  geoDirections,
+  geoDirectionsSchema,
+  geoNearby,
+  geoNearbySchema,
+  geoSearch,
+  geoSearchSchema,
+} from './handlers/geo.js'
 import {
   EMAIL_REGISTRANTS_MAX_BODY_BYTES,
   emailRegistrants,
@@ -35,6 +42,7 @@ const ROUTES = {
   },
   'POST /geo/search': { handler: geoSearch, auth: true, schema: geoSearchSchema },
   'POST /geo/directions': { handler: geoDirections, auth: true, schema: geoDirectionsSchema },
+  'POST /geo/nearby': { handler: geoNearby, auth: true, schema: geoNearbySchema },
 }
 
 function allowedOrigin(request, env) {
