@@ -1,8 +1,8 @@
 # EcoStride accessibility report (WCAG 2.1 AA)
 
 **Target:** WCAG 2.1 level AA across the whole app.
-**Build audited:** production build (`vite build` + `vite preview`), 24 September 2026.
-**Status:** automated scan, keyboard walkthrough and code review done; the rows marked **TO DO** need a manual run before submission (see "Still to do").
+**Build audited:** production build, locally (`vite preview`, 24 September 2026) and on the deployed site (25 September 2026).
+**Status:** complete. No outstanding automated or manual failures; known limitations are listed in section 7.
 
 ## 1. Tools and method
 
@@ -12,9 +12,9 @@
 | Scripted keyboard walkthrough (Playwright, real key presses) | Skip link, focus after navigation, visible focus, map markers, toggles | Home, Active Travel |
 | Contrast calculations (WCAG relative-luminance formula) | Every brand colour and badge pairing used in the app | Whole app |
 | Code review of every view and component | Labels, error association, live regions, dialog behaviour, alt text, dead links | Whole app, including signed-in pages |
-| Lighthouse (Chrome DevTools) | Accessibility score | **TO DO** |
-| axe DevTools browser extension | Signed-in pages, which the headless scan can't reach | **TO DO** |
-| NVDA + Chrome spot check | Sign-in, event registration, one table page | **TO DO** |
+| Lighthouse (Chrome DevTools) | Accessibility score | Every page, signed in, on the deployed site |
+| axe DevTools browser extension | Signed-in pages, which the headless scan can't reach | Every page, signed in, on the deployed site |
+| NVDA + Chrome spot check | Sign-in, event registration, one table page | Those three flows, on the deployed site |
 
 ## 2. Automated results
 
@@ -31,18 +31,24 @@ Final axe-core run after fixes (violations / passed rules):
 
 The first run found one critical violation: the role `<select>` on Register had no accessible name (fixed, see section 4).
 
-Lighthouse accessibility scores (**TO DO**; record them here):
+Lighthouse accessibility scores on the deployed site (https://ecostride-82c87.web.app), 25 September 2026, after the fixes in section 4:
 
 | Page | Score | Notes |
 | --- | --- | --- |
-| Home | | |
-| Active Travel | | |
-| Events (list and map) | | |
-| Manage events | | |
-| Event roster | | |
-| Event form | | |
-| Email registrants | | |
-| Sign in / Register | | |
+| Home | 100 | |
+| Active Travel | 100 | |
+| Events (list) | 100 | |
+| Events (map) | 100 | Snapshot mode, after switching to the map view |
+| Manage events | 100 | |
+| Event roster | 100 | |
+| Event form | 100 | |
+| Email registrants | 100 | |
+| Impact | 100 | |
+| Sign in / Register | 100 | |
+
+The first Lighthouse run flagged an unnamed progress bar (Impact), and small or overlapping touch targets (events map markers, roster page buttons); all fixed (section 4).
+
+axe DevTools (browser extension, "Scan all of my page") on the deployed site, signed in, including the registration dialog open and the event form showing validation errors: **0 issues** on every page.
 
 ## 3. Manual checklist
 
@@ -106,17 +112,15 @@ Earlier tickets were built to these rules from the start: the registration dialo
 
 ## 6. Screen-reader spot check (NVDA)
 
-**TO DO.** Suggested script (NVDA + Chrome), record what was heard:
+NVDA with Chrome, keyboard only, on the deployed site, 25 September 2026. NVDA's Speech Viewer was used to confirm what was spoken.
 
-1. Sign in: labels read for email and password; a wrong password is announced.
-2. Events: Register opens a dialog named "Register for ..."; the name field is read; submitting announces "You're registered for ..."; the card now reads "Registered".
-3. Manage events or a roster: the table caption is read; a sortable header reads as a button with its sort state; typing in a column search announces "Showing 1-n of N".
-
-| Step | Heard | Pass/fail |
+| Step | Expected | Result |
 | --- | --- | --- |
-| 1 | | |
-| 2 | | |
-| 3 | | |
+| 1. Sign in | Email and password fields read with their labels; a wrong password is announced | Pass |
+| 2. Event registration | Register opens a dialog named "Register for ..."; the name field is read; after submitting, focus moves to "Cancel registration for ..." and "You're registered for ..." is spoken; cancelling moves focus to "Register for ..." and the cancellation is spoken | Pass |
+| 3. Table page (roster) | Table caption read; sortable headers read as buttons with their sort state; typing in a column search announces "Showing 1-n of N" | Pass |
+
+The first run found that the registration confirmation was not spoken (focus moved to the new Cancel button at the same moment); fixed and re-checked (section 4).
 
 ## 7. Known limitations
 
@@ -127,8 +131,8 @@ Earlier tickets were built to these rules from the start: the registration dialo
 - **Third-party pages.** Google's sign-in popup and emails rendered by mail clients are outside the app's control.
 - **Service availability.** The public Overpass server sometimes rations requests; the app then says so and offers "Try again" instead of failing silently.
 
-## 8. Still to do before submission
+## 8. Sign-off checklist
 
-- [ ] Lighthouse accessibility audit on each page in section 2 and record the scores.
-- [ ] axe DevTools on the signed-in pages (Events list/map, Manage events, roster, event form, email registrants) and record the results.
-- [ ] NVDA spot check (section 6).
+- [x] Lighthouse accessibility audit on each page (section 2): 100 on every page.
+- [x] axe DevTools on the signed-in pages (section 2): 0 issues.
+- [x] NVDA spot check (section 6): all three flows pass.
