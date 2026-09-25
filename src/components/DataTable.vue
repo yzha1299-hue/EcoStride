@@ -100,7 +100,7 @@ const pageItems = computed(() => {
       </p>
 
       <nav v-if="t.pageCount.value > 1" :aria-label="`${caption} pages`">
-        <ul class="pagination pagination-sm mb-0">
+        <ul class="pagination mb-0">
           <li class="page-item" :class="{ disabled: t.page.value === 1 }">
             <button type="button" class="page-link" :disabled="t.page.value === 1" @click="t.setPage(t.page.value - 1)">
               Previous<span class="visually-hidden"> page</span>
@@ -145,6 +145,17 @@ const pageItems = computed(() => {
 .sort-icon {
   font-size: 0.75em;
   opacity: 0.7;
+}
+
+/* Separate page buttons (Bootstrap overlaps their borders by 1 px), so each
+   is its own full-size touch target. */
+.pagination {
+  gap: 0.25rem;
+}
+
+.pagination .page-link {
+  margin-left: 0;
+  border-radius: var(--bs-border-radius);
 }
 
 .search-row td {

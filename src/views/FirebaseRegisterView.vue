@@ -4,38 +4,44 @@
       <h1 class="h3 fw-bold mb-3">Create an Account</h1>
       <p class="text-muted mb-4">Choose a role. This controls which pages you can open after sign in.</p>
 
-      <p>
-        <input v-model.trim="email" class="form-control" type="email" placeholder="Email" autocomplete="email" />
-      </p>
-      <p>
-        <input
-          v-model="password"
-          class="form-control"
-          type="password"
-          placeholder="Password (min. 6 characters)"
-          autocomplete="new-password"
-        />
-      </p>
-      <p>
-        <input
-          v-model="confirmPassword"
-          class="form-control"
-          type="password"
-          placeholder="Confirm password"
-          autocomplete="new-password"
-        />
-      </p>
-      <p>
-        <select v-model="selectedRole" class="form-select">
-          <option :value="ROLES.PARTICIPANT">Participant</option>
-          <option :value="ROLES.CLUB_MEMBER">Club member</option>
-        </select>
-      </p>
-      <p>
-        <button class="btn btn-success" type="button" :disabled="isSubmitting" @click="register">
+      <form novalidate @submit.prevent="register">
+        <div class="mb-3">
+          <label class="form-label" for="register-email">Email</label>
+          <input id="register-email" v-model.trim="email" class="form-control" type="email" autocomplete="email" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="register-password">Password</label>
+          <input
+            id="register-password"
+            v-model="password"
+            class="form-control"
+            type="password"
+            autocomplete="new-password"
+            aria-describedby="register-password-hint"
+          />
+          <div id="register-password-hint" class="form-text">At least 6 characters.</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="register-confirm">Confirm password</label>
+          <input
+            id="register-confirm"
+            v-model="confirmPassword"
+            class="form-control"
+            type="password"
+            autocomplete="new-password"
+          />
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="register-role">Role</label>
+          <select id="register-role" v-model="selectedRole" class="form-select">
+            <option :value="ROLES.PARTICIPANT">Participant</option>
+            <option :value="ROLES.CLUB_MEMBER">Club member</option>
+          </select>
+        </div>
+        <button class="btn btn-success mb-3" type="submit" :disabled="isSubmitting">
           {{ isSubmitting ? 'Creating account…' : 'Create account' }}
         </button>
-      </p>
+      </form>
       <p class="text-danger small mb-0" role="alert">{{ errorMessage }}</p>
       <div class="d-flex align-items-center gap-2 my-3 text-muted small">
         <hr class="flex-grow-1 m-0" />

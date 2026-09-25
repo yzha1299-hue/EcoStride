@@ -93,9 +93,31 @@ function canCancel(event) {
 const announcement = ref('')
 const announcementIsError = ref(false)
 
-function announce(message, isError = false) {
-  announcement.value = message
+// Screen readers drop a queued live-region update when focus moves (NVDA
+// cancels speech on every focus change), so when an action also moves focus,
+// the message is written only after the new focus has been announced. Clearing
+// first means a repeat of the same message is still read out.
+const AFTER_FOCUS_DELAY_MS = 600
+let announceTimer = null
+
+function announce(message, isError = false, { afterFocusMove = false } = {}) {
+  clearTimeout(announceTimer)
+  announcement.value = ''
   announcementIsError.value = isError
+  if (!message) return
+  announceTimer = setTimeout(
+    () => {
+      announcement.value = message
+    },
+    afterFocusMove ? AFTER_FOCUS_DELAY_MS : 50,
+  )
+}
+
+// After registering or cancelling, the button that was pressed is replaced
+// by its opposite; keep keyboard focus on the card by moving it there.
+async function focusCardAction(id) {
+  await nextTick()
+  document.getElementById(id)?.focus()
 }
 
 const registeringEvent = ref(null)
@@ -112,10 +134,8 @@ async function onRegistered(result) {
   }
   setRegistered(event.id, true)
   registeringEvent.value = null
-  announce(`You're registered for ${event.title}.`)
-  // The Register button has been replaced; put focus on the new Cancel button.
-  await nextTick()
-  document.getElementById(`cancel-${event.id}`)?.focus()
+  await focusCardAction(`cancel-${event.id}`)
+  announce(`You're registered for ${event.title}.`, false, { afterFocusMove: true })
 }
 
 function onFull() {
@@ -134,7 +154,9 @@ async function cancel(event) {
     const result = await cancelRegistration(event.id)
     event.registeredCount = result.registeredCount
     setRegistered(event.id, false)
-    announce(`Your registration for ${event.title} has been cancelled.`)
+    cancellingId.value = ''
+    await focusCardAction(`register-${event.id}`)
+    announce(`Your registration for ${event.title} has been cancelled.`, false, { afterFocusMove: true })
   } catch (cancelError) {
     if (cancelError.code === 'NOT_REGISTERED') {
       setRegistered(event.id, false)
@@ -275,16 +297,14 @@ watch(
                       </div>
 
                       <div v-if="isAuthenticated" class="d-flex align-items-center gap-2 mt-1">
-                        <span class="small text-muted">Your rating:</span>
+                        <span class="small text-muted" aria-hidden="true">Your rating:</span>
                         <StarRating
                           :value="ratingsByEvent[event.id].userRating"
                           :disabled="ratingsByEvent[event.id].submitting"
+                          :label="`Your rating for ${event.title}`"
                           @rate="(value) => ratingsByEvent[event.id].submit(value)"
                         />
-                        <span
-                          v-if="ratingsByEvent[event.id].feedback"
-                          class="small text-success"
-                        >
+                        <span class="small text-success" role="status">
                           {{ ratingsByEvent[event.id].feedback }}
                         </span>
                       </div>
@@ -295,6 +315,7 @@ watch(
                   </div>
                   <button
                     v-if="canRegister(event)"
+                    :id="`register-${event.id}`"
                     class="btn btn-sm btn-success align-self-start text-nowrap"
                     type="button"
                     :aria-label="`Register for ${event.title}`"

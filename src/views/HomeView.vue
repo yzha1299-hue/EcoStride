@@ -61,21 +61,14 @@ const guides = computed(() => homeData.value?.guides ?? [])
               <img
                 class="card-img-top img-fluid"
                 :src="cardImages[item.imageKey]"
-                :alt="item.title"
+                alt=""
               />
               <div class="card-body d-flex flex-column">
                 <h3 class="h5 fw-bold">{{ item.title }}</h3>
                 <p class="text-muted flex-grow-1">{{ item.description }}</p>
-                <RouterLink
-                  v-if="item.to"
-                  class="btn btn-outline-success btn-sm align-self-start"
-                  :to="item.to"
-                >
-                  {{ item.action }}
+                <RouterLink class="btn btn-outline-success btn-sm align-self-start" :to="item.to">
+                  {{ item.action }}<span class="visually-hidden"> {{ item.title }}</span>
                 </RouterLink>
-                <a v-else class="btn btn-outline-success btn-sm align-self-start" href="#">
-                  {{ item.action }}
-                </a>
               </div>
             </article>
           </div>
@@ -106,7 +99,6 @@ const guides = computed(() => homeData.value?.guides ?? [])
       <div class="container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
           <h2 class="h3 fw-bold mb-0">Getting started</h2>
-          <a class="btn btn-outline-success btn-sm" href="#">View guides</a>
         </div>
         <div class="row g-3">
           <div v-for="guide in guides" :key="guide.title" class="col-12 col-md-6">

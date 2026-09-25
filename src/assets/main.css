@@ -57,6 +57,24 @@ body {
   color: var(--es-green-dark);
 }
 
+/* Bootstrap's primary blue with white text is exactly 4.5:1; a shade darker
+   gives badges such as "Registered" some margin (5.8:1). */
+.text-bg-primary {
+  background-color: #0b5ed7 !important;
+}
+
+.skip-link {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 1100;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  background: var(--es-green-dark);
+  color: #fff;
+  font-weight: 600;
+}
+
 .nav-link.active {
   color: var(--es-green) !important;
   font-weight: 600;

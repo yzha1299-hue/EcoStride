@@ -2,23 +2,25 @@
   <div class="container py-5">
     <div class="stat-card p-4 p-md-5 mx-auto" style="max-width: 28rem">
       <h1 class="h3 fw-bold mb-3">Sign in</h1>
-      <p>
-        <input v-model.trim="email" class="form-control" type="email" placeholder="Email" autocomplete="email" />
-      </p>
-      <p>
-        <input
-          v-model="password"
-          class="form-control"
-          type="password"
-          placeholder="Password"
-          autocomplete="current-password"
-        />
-      </p>
-      <p>
-        <button class="btn btn-success" type="button" :disabled="isSubmitting" @click="signin">
+      <form novalidate @submit.prevent="signin">
+        <div class="mb-3">
+          <label class="form-label" for="signin-email">Email</label>
+          <input id="signin-email" v-model.trim="email" class="form-control" type="email" autocomplete="email" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="signin-password">Password</label>
+          <input
+            id="signin-password"
+            v-model="password"
+            class="form-control"
+            type="password"
+            autocomplete="current-password"
+          />
+        </div>
+        <button class="btn btn-success mb-3" type="submit" :disabled="isSubmitting">
           {{ isSubmitting ? 'Signing in…' : 'Sign in' }}
         </button>
-      </p>
+      </form>
       <p class="text-danger small mb-0" role="alert">{{ errorMessage }}</p>
       <div class="d-flex align-items-center gap-2 my-3 text-muted small">
         <hr class="flex-grow-1 m-0" />

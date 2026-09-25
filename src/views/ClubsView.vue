@@ -80,7 +80,7 @@ const clubStats = computed(() => {
                 <div class="card-body d-flex flex-column">
                   <h3 class="h5 fw-bold">{{ tool.title }}</h3>
                   <p class="text-muted flex-grow-1">{{ tool.description }}</p>
-                  <a class="btn btn-success btn-sm align-self-start" href="#">{{ tool.action }}</a>
+                  <span class="badge text-bg-light border text-dark align-self-start">Coming soon</span>
                 </div>
               </article>
             </div>
@@ -113,14 +113,10 @@ const clubStats = computed(() => {
                     <h3 class="h6 fw-bold mb-1">{{ item.title }}</h3>
                     <p class="small text-muted mb-0">{{ item.description }}</p>
                   </div>
-                  <RouterLink
-                    v-if="item.to !== '#'"
-                    class="btn btn-outline-success btn-sm"
-                    :to="item.to"
-                  >
-                    Go
+                  <RouterLink v-if="item.to" class="btn btn-outline-success btn-sm" :to="item.to">
+                    Go<span class="visually-hidden"> to {{ item.title }}</span>
                   </RouterLink>
-                  <a v-else class="btn btn-outline-success btn-sm" href="#">Go</a>
+                  <span v-else class="badge text-bg-light border text-dark">Coming soon</span>
                 </div>
               </article>
             </div>

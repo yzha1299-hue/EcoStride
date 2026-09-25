@@ -22,85 +22,91 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomeView,
+      meta: { title: 'Home' },
     },
     {
       path: '/active-travel',
       name: 'active-travel',
       component: ActiveTravelView,
+      meta: { title: 'Find safe routes' },
     },
     {
       path: '/clubs',
       name: 'clubs',
       component: ClubsView,
-      meta: { requiresAuth: true, roles: [ROLES.CLUB_MEMBER] },
+      meta: { title: 'Club tools', requiresAuth: true, roles: [ROLES.CLUB_MEMBER] },
     },
     {
       path: '/events',
       name: 'events',
       component: EventsView,
-      meta: { requiresAuth: true },
+      meta: { title: 'Upcoming events', requiresAuth: true },
     },
     {
       path: '/events/manage',
       name: 'events-manage',
       component: ManageEventsView,
-      meta: { requiresAuth: true, roles: [ROLES.CLUB_MEMBER] },
+      meta: { title: 'Manage events', requiresAuth: true, roles: [ROLES.CLUB_MEMBER] },
     },
     {
       path: '/events/manage/new',
       name: 'event-create',
       component: EventFormView,
-      meta: { requiresAuth: true, roles: [ROLES.CLUB_MEMBER] },
+      meta: { title: 'Create an event', requiresAuth: true, roles: [ROLES.CLUB_MEMBER] },
     },
     {
       path: '/events/manage/:id/edit',
       name: 'event-edit',
       component: EventFormView,
-      meta: { requiresAuth: true, roles: [ROLES.CLUB_MEMBER] },
+      meta: { title: 'Edit event', requiresAuth: true, roles: [ROLES.CLUB_MEMBER] },
     },
     {
       path: '/events/manage/:id/roster',
       name: 'event-roster',
       component: RosterView,
-      meta: { requiresAuth: true, roles: [ROLES.CLUB_MEMBER] },
+      meta: { title: 'Event roster', requiresAuth: true, roles: [ROLES.CLUB_MEMBER] },
     },
     {
       path: '/events/manage/:id/email',
       name: 'event-email',
       component: EmailRegistrantsView,
-      meta: { requiresAuth: true, roles: [ROLES.CLUB_MEMBER] },
+      meta: { title: 'Email registrants', requiresAuth: true, roles: [ROLES.CLUB_MEMBER] },
     },
     {
       path: '/impact',
       name: 'impact',
       component: ImpactView,
-      meta: { requiresAuth: true },
+      meta: { title: 'Impact', requiresAuth: true },
     },
     {
       path: '/FireLogin',
       name: 'FireLogin',
       component: FirebaseSigninView,
+      meta: { title: 'Sign in' },
     },
     {
       path: '/FireRegister',
       name: 'FireRegister',
       component: FirebaseRegisterView,
+      meta: { title: 'Register' },
     },
     {
       path: '/forgot-password',
       name: 'forgot-password',
       component: ForgotPasswordView,
+      meta: { title: 'Reset your password' },
     },
     {
       path: '/complete-profile',
       name: 'complete-profile',
       component: CompleteProfileView,
-      meta: { requiresAuth: true },
+      meta: { title: 'Complete your profile', requiresAuth: true },
     },
     {
       path: '/unauthorized',
       name: 'unauthorized',
       component: UnauthorizedView,
+      meta: { title: 'Access denied' },
     },
   ],
   scrollBehavior() {
@@ -127,6 +133,12 @@ router.beforeEach(async (to) => {
   if (to.meta.roles && !to.meta.roles.includes(role.value)) {
     return { name: 'unauthorized' }
   }
+})
+
+// Every page gets its own title (announced first by screen readers, shown in
+// tabs and history). afterEach also covers the very first page load.
+router.afterEach((to) => {
+  document.title = to.meta.title ? `${to.meta.title} | EcoStride Melbourne` : 'EcoStride Melbourne'
 })
 
 export default router

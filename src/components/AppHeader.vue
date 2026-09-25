@@ -20,10 +20,8 @@ const navItems = computed(() => {
   }
 
   items.push(
-    { label: 'Gear', to: '#' },
     { label: 'Events', to: '/events' },
     { label: 'Impact', to: '/impact' },
-    { label: 'Help', to: '#' },
   )
 
   if (!isAuthenticated.value) {
@@ -34,7 +32,7 @@ const navItems = computed(() => {
 })
 
 function isCurrent(item) {
-  return item.to !== '#' && route.path === item.to
+  return route.path === item.to
 }
 
 async function signOutUser() {
@@ -68,17 +66,15 @@ async function signOutUser() {
           <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
             <li v-for="item in navItems" :key="item.label" class="nav-item">
               <RouterLink
-                v-if="item.to !== '#'"
                 class="nav-link"
                 :class="{ active: isCurrent(item) }"
                 :to="item.to"
               >
                 {{ item.label }}
               </RouterLink>
-              <a v-else class="nav-link" href="#" aria-disabled="true">{{ item.label }}</a>
             </li>
             <li v-if="isAuthenticated" class="nav-item d-flex align-items-center">
-              <span class="nav-link disabled small">{{ roleLabel }} · {{ user.email }}</span>
+              <span class="navbar-text small px-lg-2">{{ roleLabel }} · {{ user.email }}</span>
             </li>
             <li v-if="isAuthenticated" class="nav-item">
               <button class="nav-link btn btn-link" type="button" @click="signOutUser">

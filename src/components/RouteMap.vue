@@ -35,11 +35,13 @@ const layersById = new Map()
 const LINE_STYLE = { color: '#198754', weight: 4, opacity: 0.8 }
 const SELECTED_LINE_STYLE = { color: '#0b5ed7', weight: 6, opacity: 1 }
 
+// The visible dot is 24 px; the marker itself is 32 px so it is an easier
+// touch and click target.
 const markerIcon = L.divIcon({
   className: 'route-marker',
   html: '<span aria-hidden="true"></span>',
-  iconSize: [24, 24],
-  iconAnchor: [12, 12],
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
 })
 
 function drawRoutes() {
@@ -98,6 +100,18 @@ function focusSelected() {
     map.fitBounds(layers.line.getBounds(), { padding: [40, 40], maxZoom: 15 })
   } else {
     map.setView(layers.marker.getLatLng(), Math.max(map.getZoom(), 15))
+  }
+}
+
+// With no origin yet, start zoomed in as far as fits every marker, so nearby
+// markers are drawn apart rather than on top of each other.
+function fitToRoutes() {
+  if (props.origin || !props.routes.length) return
+  const points = props.routes.map((r) => [r.start.lat, r.start.lng])
+  if (points.length === 1) {
+    map.setView(points[0], 14)
+  } else {
+    map.fitBounds(points, { padding: [40, 40], maxZoom: 14 })
   }
 }
 
@@ -170,6 +184,7 @@ onMounted(() => {
   drawRoutes()
   drawOrigin()
   fitToOrigin()
+  fitToRoutes()
   drawDirections()
   drawAmenities()
 })
@@ -218,6 +233,12 @@ watch(
 }
 
 /* Leaflet creates the markers outside this component's template. */
+:deep(.route-marker) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 :deep(.route-marker span) {
   display: block;
   width: 24px;

@@ -44,11 +44,12 @@ const personalStats = computed(() => {
         <div v-else class="row g-4">
           <div class="col-12 col-lg-6">
             <div class="stat-card p-4 h-100">
-              <p class="small text-uppercase text-muted fw-semibold mb-3">Personal CO2 tracker</p>
+              <p id="co2-tracker-label" class="small text-uppercase text-muted fw-semibold mb-3">Personal CO2 tracker</p>
               <div class="progress progress-track mb-4">
                 <div
                   class="progress-bar bg-success"
                   role="progressbar"
+                  aria-labelledby="co2-tracker-label"
                   :style="{ width: personal.progressPercent + '%' }"
                   :aria-valuenow="personal.progressPercent"
                   aria-valuemin="0"
@@ -65,7 +66,7 @@ const personalStats = computed(() => {
                   </div>
                 </div>
               </div>
-              <a class="btn btn-success" href="#">Log a trip</a>
+              <p class="small text-muted mb-0">Logging trips is coming soon.</p>
             </div>
           </div>
 
@@ -95,7 +96,6 @@ const personalStats = computed(() => {
       <div class="container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
           <h2 class="h4 fw-bold mb-0">Participant stories</h2>
-          <a class="btn btn-outline-success btn-sm" href="#">Read all</a>
         </div>
 
         <div v-if="!loading && !error" class="row g-3">
@@ -104,7 +104,7 @@ const personalStats = computed(() => {
               <img
                 class="card-img-top img-fluid story-photo"
                 :src="storyImages[story.imageKey]"
-                :alt="story.title"
+                alt=""
               />
               <div class="card-body">
                 <h3 class="h5 fw-bold">{{ story.title }}</h3>

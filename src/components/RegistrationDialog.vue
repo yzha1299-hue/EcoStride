@@ -179,10 +179,19 @@ async function submit() {
         <div v-else class="form-text">Only the organiser can see this.</div>
       </div>
 
-      <p class="small mb-3" :class="isFull ? 'text-danger fw-semibold' : 'text-danger'" role="alert">{{ status }}</p>
+      <p id="reg-status" class="small mb-3" :class="isFull ? 'text-danger fw-semibold' : 'text-danger'" role="alert">{{ status }}</p>
 
       <div class="d-flex gap-2 justify-content-end">
-        <button ref="closeButton" class="btn btn-outline-secondary" type="button" :disabled="submitting" @click="dialogEl.close()">
+        <!-- When the event fills up, focus lands here; describing the button by
+             the message makes screen readers read both together. -->
+        <button
+          ref="closeButton"
+          class="btn btn-outline-secondary"
+          type="button"
+          :disabled="submitting"
+          :aria-describedby="isFull ? 'reg-status' : undefined"
+          @click="dialogEl.close()"
+        >
           {{ isFull ? 'Close' : 'Cancel' }}
         </button>
         <button v-if="!isFull" class="btn btn-success" type="submit" :disabled="submitting">

@@ -83,7 +83,7 @@ npm run build
 firebase deploy --only hosting,firestore:rules,firestore:indexes
 ```
 
-The app uses HTML5 history routing, so `firebase.json` rewrites every path that is not a real file to `index.html`. Without it, opening or refreshing a deep link such as `/events` returns a 404. Hashed files under `/assets` are cached for a year; `index.html` is never cached so new deploys take effect immediately.
+The app uses HTML5 history routing, so `firebase.json` rewrites every path that is not a real file to `index.html`. Without it, opening or refreshing a deep link such as `/events` returns a 404. Hashed files under `/assets` are cached for a year. The app shell - `/`, `index.html` and every extension-less route such as `/events`, which are all rewritten to `index.html` - is served `no-cache`, so a new deploy takes effect on the next page load. (Firebase matches header rules against the requested path, not the rewritten one, so a rule for `/index.html` alone leaves `/events` on the default one-hour cache.)
 
 ### API Worker (Cloudflare Workers)
 
@@ -106,11 +106,55 @@ Email (Brevo, free tier) - needed for "Email me the roster" and emailing registr
 
 Until both are set, email endpoints answer `EMAIL_UNAVAILABLE`. All sending goes through `worker/src/core/email.js`, so changing provider means changing that one file.
 
+Maps (Active Travel and the events map):
+
+1. Create a free account at openrouteservice.org and copy a token from its Dashboard.
+2. In `worker/`: `npx wrangler secret put ORS_API_KEY`, then `npm run deploy`.
+
+Place search (Nominatim) and nearby facilities (Overpass) need no key; the Worker identifies itself with the `NOMINATIM_USER_AGENT` in `wrangler.toml`, as their usage policies require. Map endpoints need a signed-in caller.
+
 Local development: copy `worker/.dev.vars.example` to `worker/.dev.vars` (git-ignored), then `npm run dev` in `worker/`, and point `VITE_API_BASE_URL` at `http://localhost:8787`.
 
 Check it works: sign in on the dev site, open the browser console and run `await ecoApi.me()`. It should return your uid, email, whether it's verified, and your role read from Firestore.
 
 Allowed browser origins are listed in `ALLOWED_ORIGINS` in `worker/wrangler.toml`.
+
+### Serverless design
+
+The site is static files on Firebase Hosting; everything that must not run in the browser runs as a Cloudflare Worker (`worker/`). Each request is a separate function invocation: there is no server to keep running.
+
+**Why each endpoint runs on the server**
+
+| Endpoint | Why it can't be done in the browser |
+| --- | --- |
+| `GET /me` | Proves the whole chain works: the Worker verifies the Firebase ID token itself and reads Firestore with a service account. |
+| `POST /registrations`, `POST /registrations/cancel` | The capacity cap. Registration and the event's `registeredCount` change in one Firestore commit, preconditioned on the event not having changed since it was read; the loser of a race re-reads and gets "full". Security rules alone can't compare a count to the number of documents, so clients may not write registrations at all. The registrant's email comes from the verified token, not the request. |
+| `POST /events/roster-email` | Holds the Brevo API key; reads registrant data the caller may see only as the event's creator; sends only to the caller's own verified address. |
+| `POST /events/email-registrants` | Holds the Brevo API key; loads recipients on the server so a caller can't email arbitrary addresses; enforces the 5-per-event-per-day limit in a record clients can't touch; re-checks attachment type, size and file signature. |
+| `POST /geo/search` | Proxies Nominatim with an identifying User-Agent and at most one request per second, which a browser can't guarantee across users. |
+| `POST /geo/directions` | Keeps the OpenRouteService key out of the bundle and caches routes to stay within its free quota. |
+| `POST /geo/nearby` | Proxies Overpass with one efficient query, caching and a single place to handle its rate limiting. |
+
+Every endpoint verifies the caller's Firebase ID token (signature against Google's keys, issuer, audience, expiry), validates the request body (types, lengths, unknown fields rejected), and answers other websites' browsers with no CORS headers. Business logic lives in platform-agnostic handlers (`worker/src/handlers`); `worker/src/index.js` is the only Workers-specific file.
+
+**Benefits of serverless here**
+
+- No server to run, patch or pay for while idle: the Worker scales to zero and up automatically with traffic.
+- Pay per request, and the free tier (100,000 requests/day) comfortably covers this app.
+- Runs at Cloudflare's edge, close to users; there is no always-on instance to fail.
+- Secrets (service account, Brevo and ORS keys) live in the platform's secret store, never in the repo or the bundle.
+
+**Costs and limits**
+
+- The free plan allows about 10 ms of CPU per request. Signing a service-account token costs RSA time, so Google access tokens and signing keys are cached per isolate; uploads are passed to Brevo still base64-encoded rather than decoded and re-encoded.
+- Isolates are short-lived and don't share memory, so caches and the Nominatim one-per-second throttle are per isolate, not global. (Cloudflare's Cache API does nothing on `*.workers.dev`.)
+- Cold starts add a little latency to the first request an isolate serves.
+- Vendor lock-in and a smaller ecosystem: `firebase-admin` doesn't run on Workers, so token verification (`jose`) and Firestore access (REST API) are written by hand.
+- Two platforms to deploy and monitor (Firebase and Cloudflare).
+
+**Why Cloudflare Workers rather than Firebase Cloud Functions**
+
+Cloud Functions require the paid Blaze plan (a billing account), which this project avoids; Workers' free tier needs no card. Workers also start faster (no container cold start) and run close to users. The price is the hand-written token verification and Firestore REST client described above, which in turn keeps the security-critical code small and explainable.
 
 ### Lint with [ESLint](https://eslint.org/)
 

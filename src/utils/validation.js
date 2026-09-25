@@ -19,7 +19,7 @@ export function validateSuburb(value) {
     return 'Please enter a suburb.'
   }
 
-  if (!/^[A-Za-z]+(?:[ '\-][A-Za-z]+)*$/.test(suburb)) {
+  if (!/^[A-Za-z]+(?:[ '-][A-Za-z]+)*$/.test(suburb)) {
     return 'Suburb must contain letters only.'
   }
 

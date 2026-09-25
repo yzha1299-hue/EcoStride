@@ -20,7 +20,8 @@
         </p>
 
         <p>
-          <select v-model="selectedRole" class="form-select">
+          <label class="form-label" for="profile-role">Role</label>
+          <select id="profile-role" v-model="selectedRole" class="form-select">
             <option :value="ROLES.PARTICIPANT">Participant</option>
             <option :value="ROLES.CLUB_MEMBER">Club member</option>
           </select>

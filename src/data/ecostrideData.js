@@ -145,7 +145,8 @@ const DATA_SOURCES = {
         id: 'gear',
         title: 'Gear exchange',
         description: 'Share kits and reduce equipment waste.',
-        to: '#',
+        // Not built yet: shown as "Coming soon".
+        to: null,
       },
       {
         id: 'workshops',

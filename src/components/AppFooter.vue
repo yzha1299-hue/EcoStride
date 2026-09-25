@@ -7,10 +7,7 @@ const year = new Date().getFullYear()
     <div class="container py-4">
       <div class="row gy-3 align-items-center">
         <div class="col-12 col-md">
-          <a href="#" class="footer-link me-3">About</a>
-          <a href="#" class="footer-link me-3">Privacy</a>
-          <a href="#" class="footer-link me-3">Accessibility (WCAG 2.1 AA)</a>
-          <a href="#" class="footer-link">Contact</a>
+          <span class="small text-muted">Designed to meet WCAG 2.1 AA</span>
         </div>
         <div class="col-12 col-md-auto text-md-end text-muted small">
           EcoStride Melbourne · NFP · {{ year }}
