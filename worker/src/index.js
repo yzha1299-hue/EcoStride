@@ -11,6 +11,9 @@ import { validateBody } from './core/validate.js'
 import { me } from './handlers/me.js'
 import { cancelRegistration, cancelSchema, register, registerSchema } from './handlers/registrations.js'
 import { emailRoster, rosterEmailSchema } from './handlers/rosterEmail.js'
+import { getPublicEvent, listPublicEvents, rateLimited } from './handlers/publicEvents.js'
+import { createRateLimiter, findApiKey, parseApiKeys } from './public/apiKeys.js'
+import { openApiDocument } from './public/openapi.js'
 import {
   geoDirections,
   geoDirectionsSchema,
@@ -117,10 +120,119 @@ function log(entry) {
   console.log(JSON.stringify(entry))
 }
 
+// --- Public API (/public/v1/...) --------------------------------------------
+// Read-only, for other sites and apps. Unlike the app's own API it is open to
+// any origin (it's meant to be called from elsewhere), and callers identify
+// themselves with an API key instead of a Firebase sign-in.
+
+const PUBLIC_CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'X-API-Key',
+  'Access-Control-Expose-Headers': 'Retry-After, X-RateLimit-Remaining',
+  'Access-Control-Max-Age': '86400',
+}
+const publicLimiter = createRateLimiter({ limit: 60, windowMs: 60_000 })
+let publicKeys = { secret: null, keys: [] }
+
+function apiKeysFrom(env) {
+  if (publicKeys.secret !== env.PUBLIC_API_KEYS) {
+    publicKeys = { secret: env.PUBLIC_API_KEYS, keys: parseApiKeys(env.PUBLIC_API_KEYS) }
+  }
+  return publicKeys.keys
+}
+
+function publicJson(status, body, headers = {}) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'X-Content-Type-Options': 'nosniff',
+      ...PUBLIC_CORS,
+      ...headers,
+    },
+  })
+}
+
+const EVENTS_PATH = /^\/public\/v1\/events(?:\/([^/]+))?\/?$/
+
+async function handlePublic(request, env, url) {
+  const started = Date.now()
+  const endpoint = `${request.method} ${url.pathname}`
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: PUBLIC_CORS })
+  }
+
+  let caller = null
+  let status
+  let outcome
+  let response
+  const headers = {}
+  try {
+    if (request.method !== 'GET') {
+      throw new ApiError(405, 'METHOD_NOT_ALLOWED', 'The public API is read-only; use GET.')
+    }
+    let result
+    if (url.pathname === '/public/v1/openapi.json') {
+      result = openApiDocument(url.origin)
+    } else {
+      const presented = request.headers.get('X-API-Key')
+      if (!presented) {
+        throw new ApiError(401, 'API_KEY_MISSING', 'Send your API key in the X-API-Key header.')
+      }
+      caller = findApiKey(apiKeysFrom(env), presented)
+      if (!caller) {
+        throw new ApiError(401, 'API_KEY_INVALID', 'That API key is not valid.')
+      }
+      const limit = publicLimiter.check(caller)
+      headers['X-RateLimit-Remaining'] = String(limit.remaining)
+      if (!limit.allowed) throw rateLimited(limit.retryAfterSeconds)
+
+      const match = EVENTS_PATH.exec(url.pathname)
+      if (!match) throw notFound('No such endpoint. See /public/v1/openapi.json.')
+      const deps = buildDeps(env)
+      const siteUrl = env.PUBLIC_SITE_URL
+      if (match[1]) {
+        let id
+        try {
+          id = decodeURIComponent(match[1])
+        } catch {
+          throw notFound('No event with that id.')
+        }
+        result = await getPublicEvent({ id, deps, siteUrl })
+      } else {
+        result = await listPublicEvents({ searchParams: url.searchParams, deps, siteUrl })
+      }
+    }
+    status = 200
+    outcome = 'ok'
+    // Per key, since responses are only for key holders.
+    response = publicJson(status, result, { ...headers, 'Cache-Control': 'public, max-age=60', Vary: 'X-API-Key' })
+  } catch (error) {
+    if (error instanceof ApiError) {
+      status = error.status
+      outcome = error.code
+      if (error.retryAfterSeconds) headers['Retry-After'] = String(error.retryAfterSeconds)
+      response = publicJson(status, { error: { code: error.code, message: error.message } }, headers)
+    } else {
+      status = 500
+      outcome = 'INTERNAL'
+      response = publicJson(status, { error: { code: 'INTERNAL', message: 'Something went wrong. Please try again.' } })
+      log({ level: 'error', endpoint, apiKey: caller, error: error?.message, upstreamStatus: error?.upstreamStatus })
+    }
+  }
+  // The key's name is logged, never the key.
+  log({ level: 'info', endpoint, apiKey: caller, status, outcome, durationMs: Date.now() - started })
+  return response
+}
+
 export default {
   async fetch(request, env) {
     const started = Date.now()
     const url = new URL(request.url)
+    if (url.pathname.startsWith('/public/')) {
+      return handlePublic(request, env, url)
+    }
     const origin = allowedOrigin(request, env)
     const endpoint = `${request.method} ${url.pathname}`
     let uid = null

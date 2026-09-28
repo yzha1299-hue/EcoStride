@@ -106,6 +106,24 @@ export function createFirestore({ projectId, getToken }) {
     return documents
   }
 
+  // Runs a structured query (see Firestore REST `runQuery`) against a
+  // top-level collection and returns the matching documents.
+  async function runQuery(structuredQuery) {
+    const response = await fetchUpstream('Firestore', `${base}:runQuery`, {
+      method: 'POST',
+      headers: { ...(await authHeaders()), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ structuredQuery }),
+    })
+    const rows = await response.json()
+    return rows
+      .filter((row) => row.document)
+      .map(({ document }) => ({
+        id: document.name.split('/').pop(),
+        data: decodeFields(document.fields || {}),
+        updateTime: document.updateTime,
+      }))
+  }
+
   // Full resource name, as commit writes and preconditions refer to documents.
   function documentName(path) {
     return `projects/${projectId}/databases/(default)/documents/${path}`
@@ -145,5 +163,5 @@ export function createFirestore({ projectId, getToken }) {
     throw error
   }
 
-  return { getDocument, listDocuments, documentName, commit }
+  return { getDocument, listDocuments, runQuery, documentName, commit }
 }

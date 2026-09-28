@@ -132,6 +132,8 @@ Check it works: sign in on the dev site, open the browser console and run `await
 
 Allowed browser origins are listed in `ALLOWED_ORIGINS` in `worker/wrangler.toml`.
 
+Public API for partners (read-only upcoming events, API keys, 60 requests/minute): see [docs/public-api.md](docs/public-api.md). Set the keys with `npx wrangler secret put PUBLIC_API_KEYS` (comma-separated `name:key` pairs).
+
 ### Serverless design
 
 The site is static files on Firebase Hosting; everything that must not run in the browser runs as a Cloudflare Worker (`worker/`). Each request is a separate function invocation: there is no server to keep running.
@@ -147,6 +149,7 @@ The site is static files on Firebase Hosting; everything that must not run in th
 | `POST /geo/search` | Proxies Nominatim with an identifying User-Agent and at most one request per second, which a browser can't guarantee across users. |
 | `POST /geo/directions` | Keeps the OpenRouteService key out of the bundle and caches routes to stay within its free quota. |
 | `POST /geo/nearby` | Proxies Overpass with one efficient query, caching and a single place to handle its rate limiting. |
+| `GET /public/v1/events`, `GET /public/v1/events/{id}` | Lets other sites read events without Firestore credentials; the Worker decides exactly which fields leave the platform (no personal data), checks API keys and rate-limits each partner. |
 
 Every endpoint verifies the caller's Firebase ID token (signature against Google's keys, issuer, audience, expiry), validates the request body (types, lengths, unknown fields rejected), and answers other websites' browsers with no CORS headers. Business logic lives in platform-agnostic handlers (`worker/src/handlers`); `worker/src/index.js` is the only Workers-specific file.
 
