@@ -13,7 +13,8 @@ import {
   Timestamp,
   updateDoc,
 } from 'firebase/firestore'
-import { geoSearch } from '../api/client'
+import { aiDraft, geoSearch } from '../api/client'
+import AiDraftPanel from '../components/AiDraftPanel.vue'
 import { user } from '../auth/authState'
 import { toEvent } from '../composables/useEvents'
 import { toMelbourneInputs } from '../utils/format'
@@ -126,11 +127,45 @@ function chooseLocation(place) {
   addressStatus.value = `Map location set: ${place.label}.`
 }
 
-function fieldAttrs(field) {
+// `extraId`: another element that describes the field (e.g. an AI-draft note).
+function fieldAttrs(field, extraId = null) {
+  const describedBy = [errors.value[field] ? `${field}-error` : null, extraId].filter(Boolean).join(' ')
   return {
     'aria-invalid': errors.value[field] ? 'true' : undefined,
-    'aria-describedby': errors.value[field] ? `${field}-error` : undefined,
+    'aria-describedby': describedBy || undefined,
   }
+}
+
+// "Draft with AI" for the description, from what has been typed so far. The
+// previous description is kept so Undo can bring it back.
+const aiDrafted = ref(false)
+let beforeAiDraft = null
+
+function requestDescriptionDraft(instructions) {
+  return aiDraft({
+    kind: 'event-description',
+    title: form.title.trim(),
+    eventType: form.type,
+    venue: form.venue.trim(),
+    address: form.address.trim(),
+    access: form.access.join(', '),
+    clubName: form.clubName.trim(),
+    instructions,
+  })
+}
+
+async function useAiDraft(draft) {
+  beforeAiDraft ??= form.description
+  form.description = draft.description
+  aiDrafted.value = true
+  await nextTick()
+  document.getElementById('description')?.focus()
+}
+
+function undoAiDraft() {
+  if (beforeAiDraft !== null) form.description = beforeAiDraft
+  beforeAiDraft = null
+  aiDrafted.value = false
 }
 
 async function focusFirstError() {
@@ -253,8 +288,18 @@ async function deleteEvent() {
 
       <div class="mb-3">
         <label class="form-label" for="description">Description <span class="text-muted">(optional)</span></label>
-        <textarea id="description" v-model="form.description" class="form-control" :class="{ 'is-invalid': errors.description }" v-bind="fieldAttrs('description')" rows="3" maxlength="2000"></textarea>
+        <textarea id="description" v-model="form.description" class="form-control" :class="{ 'is-invalid': errors.description }" v-bind="fieldAttrs('description', aiDrafted ? 'ai-note' : null)" rows="3" maxlength="2000"></textarea>
         <div v-if="errors.description" id="description-error" class="invalid-feedback">{{ errors.description }}</div>
+        <p v-if="aiDrafted" id="ai-note" class="small text-success mt-1 mb-2">AI-generated draft - check it before saving.</p>
+        <AiDraftPanel
+          class="mt-2"
+          :request="requestDescriptionDraft"
+          sees="the title, type, venue, address, access and club you've entered"
+          placeholder="e.g. Mention that kids can bring scooters and helmets are provided."
+          :can-undo="aiDrafted"
+          @drafted="useAiDraft"
+          @undo="undoAiDraft"
+        />
       </div>
 
       <div class="row g-3 mb-3">

@@ -98,3 +98,7 @@ export const geoNearby = ({ start, end }) =>
     method: 'POST',
     body: { lat: start.lat, lng: start.lng, endLat: end?.lat, endLng: end?.lng },
   })
+
+// "Draft with AI". kind: "registrant-email" (with eventId) or "event-description"
+// (with the form fields typed so far). Returns { draft, remainingToday }.
+export const aiDraft = (body) => apiFetch('/ai/draft', { method: 'POST', body })

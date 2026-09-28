@@ -2,6 +2,7 @@
 // CORS, reading the request, identity verification, logging and turning results
 // or errors into Responses. Business logic lives in ./handlers.
 import { createEmailSender } from './core/email.js'
+import { createTextGenerator } from './core/genai.js'
 import { ApiError, invalidRequest, notFound } from './core/errors.js'
 import { createFirestore } from './core/firestore.js'
 import { createMapServices } from './core/maps.js'
@@ -11,6 +12,7 @@ import { validateBody } from './core/validate.js'
 import { me } from './handlers/me.js'
 import { cancelRegistration, cancelSchema, register, registerSchema } from './handlers/registrations.js'
 import { emailRoster, rosterEmailSchema } from './handlers/rosterEmail.js'
+import { aiDraft, aiDraftSchema } from './handlers/aiDraft.js'
 import { getPublicEvent, listPublicEvents, rateLimited } from './handlers/publicEvents.js'
 import { createRateLimiter, findApiKey, parseApiKeys } from './public/apiKeys.js'
 import { openApiDocument } from './public/openapi.js'
@@ -46,6 +48,7 @@ const ROUTES = {
   'POST /geo/search': { handler: geoSearch, auth: true, schema: geoSearchSchema },
   'POST /geo/directions': { handler: geoDirections, auth: true, schema: geoDirectionsSchema },
   'POST /geo/nearby': { handler: geoNearby, auth: true, schema: geoNearbySchema },
+  'POST /ai/draft': { handler: aiDraft, auth: true, schema: aiDraftSchema },
 }
 
 function allowedOrigin(request, env) {
@@ -111,6 +114,7 @@ function buildDeps(env) {
     }),
     email: createEmailSender({ apiKey: env.BREVO_API_KEY, senderEmail: env.BREVO_SENDER_EMAIL }),
     maps: createMapServices({ orsApiKey: env.ORS_API_KEY, userAgent: env.NOMINATIM_USER_AGENT }),
+    ai: createTextGenerator({ apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MODEL }),
   }
 }
 

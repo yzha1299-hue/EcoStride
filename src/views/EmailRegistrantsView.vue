@@ -3,10 +3,11 @@ import { nextTick, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { doc, getDoc, getFirestore } from 'firebase/firestore'
 import { emailVerified, user } from '../auth/authState'
-import { emailRegistrants } from '../api/client'
+import { aiDraft, emailRegistrants } from '../api/client'
 import { toEvent } from '../composables/useEvents'
 import { formatLongDate, formatTimeRange } from '../utils/format'
 import VerifyEmailPrompt from '../components/VerifyEmailPrompt.vue'
+import AiDraftPanel from '../components/AiDraftPanel.vue'
 
 // Compose a message to everyone registered for one of your events. The server
 // looks up the recipients and sends each one an individual copy with a
@@ -30,6 +31,28 @@ const loading = ref(true)
 const loadError = ref('')
 
 const form = reactive({ subject: '', message: '' })
+
+// "Draft with AI": the draft replaces the subject and message; the previous
+// text is kept so Undo can bring it back.
+const aiDrafted = ref(false)
+let beforeAiDraft = null
+
+const requestEmailDraft = (instructions) => aiDraft({ kind: 'registrant-email', eventId, instructions })
+
+async function useAiDraft(draft) {
+  beforeAiDraft ??= { subject: form.subject, message: form.message }
+  Object.assign(form, { subject: draft.subject, message: draft.message })
+  aiDrafted.value = true
+  await nextTick()
+  document.getElementById('subject')?.focus()
+}
+
+function undoAiDraft() {
+  if (beforeAiDraft) Object.assign(form, beforeAiDraft)
+  beforeAiDraft = null
+  aiDrafted.value = false
+}
+
 const file = ref(null)
 const fileInput = ref(null)
 const errors = ref({})
@@ -184,6 +207,20 @@ async function send() {
           emails per event per day.
         </p>
 
+        <AiDraftPanel
+          class="mb-3"
+          :request="requestEmailDraft"
+          sees="this event's details"
+          placeholder="e.g. Remind everyone to bring water; we're meeting at the north gate."
+          :can-undo="aiDrafted"
+          @drafted="useAiDraft"
+          @undo="undoAiDraft"
+        />
+
+        <p v-if="aiDrafted" id="ai-note" class="small text-success mb-2">
+          AI-generated draft - check it before sending.
+        </p>
+
         <div class="mb-3">
           <label class="form-label" for="subject">Subject</label>
           <input
@@ -191,7 +228,7 @@ async function send() {
             v-model="form.subject"
             class="form-control"
             :class="{ 'is-invalid': errors.subject }"
-            v-bind="fieldAttrs('subject')"
+            v-bind="fieldAttrs('subject', aiDrafted ? 'ai-note' : null)"
             :maxlength="SUBJECT_MAX"
           />
           <div v-if="errors.subject" id="subject-error" class="invalid-feedback">{{ errors.subject }}</div>
@@ -204,7 +241,7 @@ async function send() {
             v-model="form.message"
             class="form-control"
             :class="{ 'is-invalid': errors.message }"
-            v-bind="fieldAttrs('message')"
+            v-bind="fieldAttrs('message', aiDrafted ? 'ai-note' : null)"
             rows="8"
             :maxlength="MESSAGE_MAX"
           ></textarea>

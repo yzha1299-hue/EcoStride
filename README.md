@@ -126,6 +126,14 @@ Maps (Active Travel and the events map):
 
 Place search (Nominatim) and nearby facilities (Overpass) need no key; the Worker identifies itself with the `NOMINATIM_USER_AGENT` in `wrangler.toml`, as their usage policies require. Map endpoints need a signed-in caller.
 
+AI drafting ("Draft with AI" on the email-registrants page and the event form):
+
+1. In Google AI Studio (aistudio.google.com), choose **Get API key** and create a key (free tier).
+2. In `worker/`: `npx wrangler secret put GEMINI_API_KEY`, then `npm run deploy`.
+3. The model is `GEMINI_MODEL` in `wrangler.toml`; if AI Studio's **Rate limits** page shows no free quota for it, switch to one that has.
+
+The Worker builds every prompt from event details it reads itself (never registrations), and allows each club member 20 drafts a day. Drafts are only returned to the organiser to edit.
+
 Local development: copy `worker/.dev.vars.example` to `worker/.dev.vars` (git-ignored), then `npm run dev` in `worker/`, and point `VITE_API_BASE_URL` at `http://localhost:8787`.
 
 Check it works: sign in on the dev site, open the browser console and run `await ecoApi.me()`. It should return your uid, email, whether it's verified, and your role read from Firestore.
@@ -149,6 +157,7 @@ The site is static files on Firebase Hosting; everything that must not run in th
 | `POST /geo/search` | Proxies Nominatim with an identifying User-Agent and at most one request per second, which a browser can't guarantee across users. |
 | `POST /geo/directions` | Keeps the OpenRouteService key out of the bundle and caches routes to stay within its free quota. |
 | `POST /geo/nearby` | Proxies Overpass with one efficient query, caching and a single place to handle its rate limiting. |
+| `POST /ai/draft` | Keeps the Gemini key off the browser; builds the prompt from event details the Worker reads itself, so no registrant data can reach the AI service; enforces 20 drafts per club member per day. |
 | `GET /public/v1/events`, `GET /public/v1/events/{id}` | Lets other sites read events without Firestore credentials; the Worker decides exactly which fields leave the platform (no personal data), checks API keys and rate-limits each partner. |
 
 Every endpoint verifies the caller's Firebase ID token (signature against Google's keys, issuer, audience, expiry), validates the request body (types, lengths, unknown fields rejected), and answers other websites' browsers with no CORS headers. Business logic lives in platform-agnostic handlers (`worker/src/handlers`); `worker/src/index.js` is the only Workers-specific file.

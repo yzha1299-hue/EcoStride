@@ -12,6 +12,9 @@ ALLOWED_ORIGINS = "https://ecostride-82c87.web.app,https://ecostride-82c87.fireb
 NOMINATIM_USER_AGENT = "EcoStride/1.0 (+https://ecostride-82c87.web.app)"
 # Where public API responses tell people to register.
 PUBLIC_SITE_URL = "https://ecostride-82c87.web.app"
+# Gemini model for "Draft with AI" (check which models your free tier allows
+# in Google AI Studio > Rate limits).
+GEMINI_MODEL = "gemini-3.5-flash"
 BREVO_SENDER_EMAIL = "yzha1299@student.monash.edu"
 
 # Secrets (never in this file) - set with `npx wrangler secret put <NAME>`:
@@ -21,3 +24,4 @@ BREVO_SENDER_EMAIL = "yzha1299@student.monash.edu"
 #                             a secret rather than a var so it stays out of the repo
 #   ORS_API_KEY               OpenRouteService key (openrouteservice.org > Dashboard > Tokens)
 #   PUBLIC_API_KEYS           public API keys as comma-separated name:key pairs (docs/public-api.md)
+#   GEMINI_API_KEY            Gemini API key (aistudio.google.com > Get API key)

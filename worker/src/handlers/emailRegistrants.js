@@ -1,6 +1,6 @@
 import { ApiError, emailNotVerified, notFound, notOwner } from '../core/errors.js'
 import { escapeHtml } from '../core/email.js'
-import { encodeFields, retryOnConflict } from '../core/firestore.js'
+import { releaseDailySlot, reserveDailySlot } from '../core/dailyLimit.js'
 import { eventToIcs } from '../core/ics.js'
 import { EVENT_ID } from '../core/validate.js'
 
@@ -63,7 +63,6 @@ export function checkAttachment({ attachmentName: name, attachmentType: type, at
   return { name: safeName, base64: data }
 }
 
-const melbourneDay = new Intl.DateTimeFormat('en-CA', { timeZone: MELBOURNE_TZ, dateStyle: 'short' })
 const longDate = new Intl.DateTimeFormat('en-AU', {
   timeZone: MELBOURNE_TZ,
   weekday: 'long',
@@ -77,55 +76,6 @@ const timeOfDay = new Intl.DateTimeFormat('en-AU', {
   minute: '2-digit',
   hour12: true,
 })
-
-// One counter per event per Melbourne day, e.g. emailRateLimits/bike-basics_2026-09-24.
-// Taking a slot and counting it happen in one preconditioned commit, so two
-// sends at the same moment can't both take the 5th slot.
-async function reserveSendSlot(firestore, eventId, now) {
-  const day = melbourneDay.format(now)
-  const path = `emailRateLimits/${eventId}_${day}`
-  return retryOnConflict(
-    async () => {
-      const record = await firestore.getDocument(path)
-      const used = record?.data.count ?? 0
-      if (used >= DAILY_LIMIT) {
-        throw new ApiError(
-          429,
-          'RATE_LIMITED',
-          `You've sent ${DAILY_LIMIT} emails about this event today, which is the daily limit. Please try again tomorrow.`,
-        )
-      }
-      const name = firestore.documentName(path)
-      await firestore.commit([
-        record
-          ? {
-              transform: { document: name, fieldTransforms: [{ fieldPath: 'count', increment: { integerValue: '1' } }] },
-              currentDocument: { updateTime: record.updateTime },
-            }
-          : { update: { name, fields: encodeFields({ eventId, day, count: 1 }) }, currentDocument: { exists: false } },
-      ])
-      return { path, remaining: DAILY_LIMIT - used - 1 }
-    },
-    () => new ApiError(409, 'CONFLICT', 'Another email is being sent right now. Please try again.'),
-  )
-}
-
-// A send that failed shouldn't use up one of the day's slots. Best effort: if
-// this fails too, the worst case is one slot lost for the day.
-async function releaseSendSlot(firestore, path) {
-  try {
-    await firestore.commit([
-      {
-        transform: {
-          document: firestore.documentName(path),
-          fieldTransforms: [{ fieldPath: 'count', increment: { integerValue: '-1' } }],
-        },
-      },
-    ])
-  } catch {
-    // Ignored; see above.
-  }
-}
 
 function slug(text) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'event'
@@ -173,7 +123,14 @@ export async function emailRegistrants({ user, body, deps }) {
   }
 
   const now = new Date()
-  const slot = await reserveSendSlot(deps.firestore, body.eventId, now)
+  const slot = await reserveDailySlot(deps.firestore, {
+    collection: 'emailRateLimits',
+    key: body.eventId,
+    limit: DAILY_LIMIT,
+    limitMessage: `You've sent ${DAILY_LIMIT} emails about this event today, which is the daily limit. Please try again tomorrow.`,
+    fields: { eventId: body.eventId },
+    now,
+  })
 
   const eventData = { id: body.eventId, ...event.data }
   const attachments = [{ name: `${slug(event.data.title)}.ics`, content: eventToIcs(eventData, { now }) }]
@@ -191,7 +148,8 @@ export async function emailRegistrants({ user, body, deps }) {
       replyTo: { email: user.email },
     })
   } catch (error) {
-    await releaseSendSlot(deps.firestore, slot.path)
+    // A send that failed shouldn't use up one of the day's slots.
+    await releaseDailySlot(deps.firestore, slot.path)
     throw error
   }
 
