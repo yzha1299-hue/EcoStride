@@ -5,8 +5,16 @@ service cloud.firestore {
     // Each user's role assignment. Written once at registration and never
     // editable afterwards, so a signed-in client cannot grant itself a
     // higher-privilege role by rewriting its own document or local storage.
+    // Admins (charity staff) are made only by scripts/make-admin.mjs with the
+    // Admin SDK - the create rule below never accepts 'admin'. They may read
+    // every profile, for the dashboard's user counts, but not change any.
+    function isAdmin() {
+      return request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
     match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
 
       allow create: if request.auth != null
         && request.auth.uid == userId

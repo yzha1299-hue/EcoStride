@@ -5,7 +5,7 @@ import { useAuth } from '../auth/authState'
 
 const route = useRoute()
 const router = useRouter()
-const { isAuthenticated, isClubMember, roleLabel, user, logout } = useAuth()
+const { isAuthenticated, isAdmin, isClubMember, roleLabel, user, logout } = useAuth()
 
 const navItems = computed(() => {
   const items = [
@@ -17,6 +17,10 @@ const navItems = computed(() => {
 
   if (isClubMember.value) {
     items.push({ label: 'Manage events', to: '/events/manage' })
+  }
+
+  if (isAdmin.value) {
+    items.push({ label: 'Admin', to: '/admin' })
   }
 
   items.push(

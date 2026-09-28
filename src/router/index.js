@@ -13,6 +13,7 @@ import FirebaseRegisterView from '../views/FirebaseRegisterView.vue'
 import ForgotPasswordView from '../views/ForgotPasswordView.vue'
 import CompleteProfileView from '../views/CompleteProfileView.vue'
 import UnauthorizedView from '../views/UnauthorizedView.vue'
+import AdminDashboardView from '../views/AdminDashboardView.vue'
 import { authReady, hasProfile, role, ROLES, user } from '../auth/authState'
 
 const router = createRouter({
@@ -101,6 +102,12 @@ const router = createRouter({
       name: 'complete-profile',
       component: CompleteProfileView,
       meta: { title: 'Complete your profile', requiresAuth: true },
+    },
+    {
+      path: '/admin',
+      name: 'admin',
+      component: AdminDashboardView,
+      meta: { title: 'Admin dashboard', requiresAuth: true, roles: [ROLES.ADMIN] },
     },
     {
       path: '/unauthorized',

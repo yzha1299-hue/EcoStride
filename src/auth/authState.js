@@ -13,11 +13,14 @@ import { doc, getDoc, getFirestore, serverTimestamp, setDoc } from 'firebase/fir
 export const ROLES = {
   PARTICIPANT: 'participant',
   CLUB_MEMBER: 'clubMember',
+  // Charity staff; granted only by scripts/make-admin.mjs, never at sign-up.
+  ADMIN: 'admin',
 }
 
 export const ROLE_LABELS = {
   [ROLES.PARTICIPANT]: 'Participant',
   [ROLES.CLUB_MEMBER]: 'Club member',
+  [ROLES.ADMIN]: 'Admin',
 }
 
 export const user = ref(null)
@@ -39,10 +42,7 @@ export const authReady = new Promise((resolve) => {
 async function fetchProfile(firebaseUser) {
   const snapshot = await getDoc(doc(getFirestore(), 'users', firebaseUser.uid))
   const storedRole = snapshot.data()?.role
-  const resolvedRole =
-    storedRole === ROLES.PARTICIPANT || storedRole === ROLES.CLUB_MEMBER
-      ? storedRole
-      : ROLES.PARTICIPANT
+  const resolvedRole = Object.values(ROLES).includes(storedRole) ? storedRole : ROLES.PARTICIPANT
 
   return { role: resolvedRole, exists: snapshot.exists() }
 }
@@ -153,6 +153,7 @@ export function useAuth() {
     isAuthenticated: computed(() => !!user.value),
     isClubMember: computed(() => role.value === ROLES.CLUB_MEMBER),
     isParticipant: computed(() => role.value === ROLES.PARTICIPANT),
+    isAdmin: computed(() => role.value === ROLES.ADMIN),
     roleLabel: computed(() => ROLE_LABELS[role.value] || ''),
     logout,
   }

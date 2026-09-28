@@ -68,6 +68,19 @@ The key can be one for the Worker's `ecostride-worker` service account (Cloud Da
 To try it without touching real data, run it against the emulator:
 `firebase emulators:exec --only firestore --project demo-ecostride "node scripts/seed-events.mjs"` (with `SEED_CREATOR_UID` set).
 
+### Make an admin
+
+Admins (EcoStride staff) see the Admin dashboard (`/admin`) with user and event numbers. The role can't be chosen at sign-up or changed in the browser; grant it from your machine with the Admin SDK, using the same key as the seed script:
+
+```sh
+# PowerShell
+$env:GOOGLE_APPLICATION_CREDENTIALS = "C:\keys\ecostride-worker-key.json"
+npm run make-admin -- <uid>            # make admin
+npm run make-admin -- <uid> --revoke   # back to participant
+```
+
+The account must have signed up and chosen a role first. Find its uid in Firebase console > Authentication > Users. The user sees the change after signing in again (or reloading).
+
 ### Deploy to Firebase Hosting
 
 One-time setup:

@@ -14,7 +14,8 @@
     "test": "run-s test:unit test:rules",
     "test:unit": "vitest run --project unit --passWithNoTests",
     "test:rules": "firebase emulators:exec --only firestore --project demo-ecostride \"vitest run --project rules\"",
-    "seed:events": "node scripts/seed-events.mjs"
+    "seed:events": "node scripts/seed-events.mjs",
+    "make-admin": "node scripts/make-admin.mjs"
   },
   "dependencies": {
     "bootstrap": "^5.3.8",
