@@ -63,6 +63,14 @@ body {
   background-color: #0b5ed7 !important;
 }
 
+/* Headings and <main> get tabindex="-1" only so the app can move focus to
+   them (after navigation, the skip link, new directions). They aren't
+   controls, so a focus outline there just draws a box across the page;
+   links, buttons and fields keep theirs. */
+[tabindex='-1']:focus {
+  outline: none;
+}
+
 .skip-link {
   position: absolute;
   top: 0.5rem;

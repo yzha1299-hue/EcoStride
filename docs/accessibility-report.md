@@ -57,7 +57,7 @@ axe DevTools (browser extension, "Scan all of my page") on the deployed site, si
 | Skip link (2.4.1) | Pass | First Tab on any page shows "Skip to main content"; Enter moves focus to `<main>`. |
 | Page titles (2.4.2) | Pass | Every route has its own title, e.g. "Find safe routes \| EcoStride Melbourne", including on first load. |
 | Focus order and focus after navigation (2.4.3) | Pass | After following a link, focus moves to the new page's `<h1>`. Dialogs and forms move focus to what changed (new directions, first invalid field, first address match). |
-| Visible focus (2.4.7) | Pass | No `outline: none` anywhere; Bootstrap focus rings on controls, a 3 px outline on map markers. |
+| Visible focus (2.4.7) | Pass | Every control shows a focus indicator: Bootstrap focus rings on links, buttons and fields, a 3 px outline on map markers. The only outlines removed are on headings and `<main>`, which receive focus from the app (after navigation, the skip link, new directions) but aren't controls; an outline there drew a box across the page. |
 | Keyboard operation (2.1.1) | Pass | Map markers are focusable and select with Enter or Space; star ratings, toggles, table sorting, pagination and the registration dialog all work by keyboard. |
 | No keyboard trap (2.1.2) | Pass | The registration dialog wraps Tab on purpose but closes with Escape, Cancel or Close; the map releases focus with Tab. |
 | Labels and instructions (3.3.2, 1.3.1) | Pass | Every input, select and textarea has a `<label>` (or a visually hidden one for table searches). |
