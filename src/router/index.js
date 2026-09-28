@@ -13,7 +13,6 @@ import FirebaseRegisterView from '../views/FirebaseRegisterView.vue'
 import ForgotPasswordView from '../views/ForgotPasswordView.vue'
 import CompleteProfileView from '../views/CompleteProfileView.vue'
 import UnauthorizedView from '../views/UnauthorizedView.vue'
-import AdminDashboardView from '../views/AdminDashboardView.vue'
 import { authReady, hasProfile, role, ROLES, user } from '../auth/authState'
 
 const router = createRouter({
@@ -106,7 +105,8 @@ const router = createRouter({
     {
       path: '/admin',
       name: 'admin',
-      component: AdminDashboardView,
+      // Loaded on demand: only admins need it, and it brings in Chart.js.
+      component: () => import('../views/AdminDashboardView.vue'),
       meta: { title: 'Admin dashboard', requiresAuth: true, roles: [ROLES.ADMIN] },
     },
     {
