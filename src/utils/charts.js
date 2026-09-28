@@ -17,8 +17,10 @@ const reducedMotion =
 
 // Shared options: whole-number axes, tooltips that show every series for the
 // hovered bar, and no animation for people who asked for reduced motion.
-export function barOptions({ stacked = false, legend = false } = {}) {
+// `horizontal`: bars run left to right (better for long category labels).
+export function barOptions({ stacked = false, legend = false, horizontal = false } = {}) {
   return {
+    indexAxis: horizontal ? 'y' : 'x',
     responsive: true,
     maintainAspectRatio: false,
     animation: reducedMotion ? false : undefined,
@@ -28,8 +30,8 @@ export function barOptions({ stacked = false, legend = false } = {}) {
       tooltip: { enabled: true },
     },
     scales: {
-      x: { stacked, ticks: { color: '#495057' }, grid: { display: false } },
-      y: { stacked, beginAtZero: true, ticks: { precision: 0, color: '#495057' } },
+      x: { stacked, beginAtZero: true, ticks: { precision: 0, color: '#495057' }, grid: { display: horizontal } },
+      y: { stacked, beginAtZero: true, ticks: { precision: 0, color: '#495057' }, grid: { display: !horizontal } },
     },
   }
 }

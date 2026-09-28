@@ -3,7 +3,6 @@ import HomeView from '../views/HomeView.vue'
 import ActiveTravelView from '../views/ActiveTravelView.vue'
 import ClubsView from '../views/ClubsView.vue'
 import EventsView from '../views/EventsView.vue'
-import ManageEventsView from '../views/ManageEventsView.vue'
 import EventFormView from '../views/EventFormView.vue'
 import RosterView from '../views/RosterView.vue'
 import EmailRegistrantsView from '../views/EmailRegistrantsView.vue'
@@ -45,7 +44,8 @@ const router = createRouter({
     {
       path: '/events/manage',
       name: 'events-manage',
-      component: ManageEventsView,
+      // Loaded on demand: club members only, and it brings in Chart.js.
+      component: () => import('../views/ManageEventsView.vue'),
       meta: { title: 'Manage events', requiresAuth: true, roles: [ROLES.CLUB_MEMBER] },
     },
     {

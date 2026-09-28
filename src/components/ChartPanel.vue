@@ -13,6 +13,8 @@ defineProps({
   rows: { type: Array, required: true },
   empty: { type: Boolean, default: false },
   emptyText: { type: String, default: 'No data to show yet.' },
+  // CSS height of the chart area.
+  height: { type: String, default: '16rem' },
 })
 
 const id = useId()
@@ -26,7 +28,7 @@ const showTable = ref(false)
 
     <p v-if="empty" class="small text-muted mb-0">{{ emptyText }}</p>
     <template v-else>
-      <div class="chart-box flex-grow-1">
+      <div class="chart-box flex-grow-1" :style="{ height }">
         <slot :described-by="`${id}-summary`" />
       </div>
       <button
@@ -63,6 +65,5 @@ const showTable = ref(false)
 <style scoped>
 .chart-box {
   position: relative;
-  height: 16rem;
 }
 </style>

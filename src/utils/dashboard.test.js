@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { eventsByType, roleCounts, signupsPerWeek, summariseEvents } from './dashboard.js'
+import { eventsByType, registrationBars, roleCounts, signupsPerWeek, summariseEvents } from './dashboard.js'
 
 const NOW = new Date('2026-09-28T00:00:00Z')
 const DAY = 24 * 60 * 60 * 1000
@@ -144,5 +144,54 @@ describe('roleCounts', () => {
       { role: 'clubMember', label: 'Club members', count: 3 },
       { role: 'admin', label: 'Admins', count: 0 },
     ])
+  })
+})
+
+describe('registrationBars', () => {
+  const HOUR = 60 * 60 * 1000
+  const at = (days) => new Date(NOW.getTime() + days * 24 * HOUR)
+  const event = (id, days, overrides = {}) => ({
+    id,
+    title: `Event ${id}`,
+    capacity: 10,
+    registeredCount: 4,
+    status: 'open',
+    startsAt: at(days),
+    endsAt: new Date(at(days).getTime() + 2 * HOUR),
+    ...overrides,
+  })
+
+  it('gives one bar per upcoming event, soonest first, with registered, places left and fill rate', () => {
+    const bars = registrationBars([event('b', 5, { registeredCount: 10 }), event('a', 2)], NOW)
+
+    expect(bars.map((bar) => bar.id)).toEqual(['a', 'b'])
+    expect(bars[0]).toMatchObject({ registered: 4, placesLeft: 6, capacity: 10, fillPercent: 40 })
+    expect(bars[1]).toMatchObject({ registered: 10, placesLeft: 0, fillPercent: 100 })
+  })
+
+  it('leaves out cancelled events and events that have already finished', () => {
+    const bars = registrationBars(
+      [event('keep', 1), event('cancelled', 1, { status: 'cancelled' }), event('past', -2)],
+      NOW,
+    )
+
+    expect(bars.map((bar) => bar.id)).toEqual(['keep'])
+  })
+
+  it('keeps an event that is under way (started, not finished)', () => {
+    const running = event('now', 0, { startsAt: new Date(NOW.getTime() - HOUR), endsAt: new Date(NOW.getTime() + HOUR) })
+
+    expect(registrationBars([running], NOW).map((bar) => bar.id)).toEqual(['now'])
+  })
+
+  it('labels each bar with a shortened title and the Melbourne date', () => {
+    const [bar] = registrationBars(
+      [event('x', 2, { title: 'A very long workshop title that goes on and on', startsAt: new Date('2026-09-30T15:00:00Z'), endsAt: new Date('2026-09-30T17:00:00Z') })],
+      NOW,
+    )
+
+    // 15:00 UTC on 30 Sep is 1 am on 1 Oct in Melbourne.
+    expect(bar.label).toBe('A very long workshop tit... (1 Oct)')
+    expect(bar.title).toBe('A very long workshop title that goes on and on')
   })
 })

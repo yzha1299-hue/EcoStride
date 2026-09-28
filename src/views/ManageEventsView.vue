@@ -1,15 +1,20 @@
 <script setup>
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { Bar } from 'vue-chartjs'
 import { user } from '../auth/authState'
 import { useEvents } from '../composables/useEvents'
 import { useTable } from '../composables/useTable'
 import { formatEventDay, formatTimeRange } from '../utils/format'
 import { EVENT_STATE, eventState } from '../../shared/eventState'
+import { registrationBars } from '../utils/dashboard'
+import { barOptions, CHART_COLORS } from '../utils/charts'
 import DataTable from '../components/DataTable.vue'
 import TableExport from '../components/TableExport.vue'
+import ChartPanel from '../components/ChartPanel.vue'
 
 const route = useRoute()
+const router = useRouter()
 const { events, loading, error } = useEvents({ createdBy: user.value.uid })
 
 const STATE_LABELS = {
@@ -34,6 +39,53 @@ function when(event) {
 }
 
 const stateOf = (event) => STATE_LABELS[eventState(event)]
+
+// Registrations against capacity for events still to come. Clicking a bar
+// opens that event's roster; keyboard users reach the same rosters from the
+// table below (Roster buttons) and the chart's own table alternative.
+const bars = computed(() => registrationBars(events.value))
+const barChart = computed(() => ({
+  labels: bars.value.map((bar) => bar.label),
+  datasets: [
+    { label: 'Registered', data: bars.value.map((bar) => bar.registered), backgroundColor: CHART_COLORS.green },
+    { label: 'Places left', data: bars.value.map((bar) => bar.placesLeft), backgroundColor: CHART_COLORS.grey },
+  ],
+}))
+const barSummary = computed(() => {
+  const full = bars.value.filter((bar) => bar.placesLeft === 0).length
+  const quiet = bars.value.filter((bar) => bar.fillPercent < 25)
+  const parts = [`${bars.value.length} upcoming event${bars.value.length === 1 ? '' : 's'}`]
+  parts.push(`${full} full`)
+  if (quiet.length) parts.push(`under a quarter full: ${quiet.map((bar) => bar.title).join(', ')}`)
+  return `${parts.join('; ')}. Select a bar to open its roster.`
+})
+const barRows = computed(() =>
+  bars.value.map((bar) => ({ ...bar, fill: `${bar.fillPercent}%` })),
+)
+const barChartOptions = computed(() => {
+  const base = barOptions({ stacked: true, legend: true, horizontal: true })
+  return {
+    ...base,
+    plugins: {
+      ...base.plugins,
+      tooltip: {
+        callbacks: {
+          title: (items) => bars.value[items[0].dataIndex].title,
+          footer: (items) => `${bars.value[items[0].dataIndex].fillPercent}% full - click to open the roster`,
+        },
+      },
+    },
+    onClick: (_event, elements) => {
+      const bar = bars.value[elements[0]?.index]
+      if (bar) router.push({ name: 'event-roster', params: { id: bar.id } })
+    },
+    onHover: (event, elements) => {
+      event.native.target.style.cursor = elements.length ? 'pointer' : 'default'
+    },
+  }
+})
+// Enough room for each bar and its label.
+const barHeight = computed(() => `${Math.max(10, bars.value.length * 2.75 + 5)}rem`)
 
 const table = useTable(
   events,
@@ -71,6 +123,32 @@ const table = useTable(
     <p v-else-if="!events.length" class="text-muted">You haven't created any events yet.</p>
 
     <template v-else>
+      <ChartPanel
+        class="mb-4"
+        title="Registrations for your upcoming events"
+        :summary="barSummary"
+        :columns="[
+          { key: 'title', label: 'Event' },
+          { key: 'registered', label: 'Registered' },
+          { key: 'placesLeft', label: 'Places left' },
+          { key: 'capacity', label: 'Capacity' },
+          { key: 'fill', label: 'Full' },
+        ]"
+        :rows="barRows"
+        :empty="!bars.length"
+        empty-text="No upcoming events to chart. Past and cancelled events are left out."
+        :height="barHeight"
+      >
+        <template #default="{ describedBy }">
+          <Bar
+            :data="barChart"
+            :options="barChartOptions"
+            aria-label="Stacked bar chart: registrations and places left for each upcoming event"
+            :aria-describedby="describedBy"
+          />
+        </template>
+      </ChartPanel>
+
       <TableExport class="mb-3" :table="table" name="my events" title="EcoStride - my events" />
       <DataTable :table="table" caption="Your events">
         <template #cell-title="{ row }">

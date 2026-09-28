@@ -92,3 +92,28 @@ export function eventsByType(events, now = new Date()) {
   }
   return [...groups.values()].sort((a, b) => a.type.localeCompare(b.type))
 }
+
+const LABEL_TITLE_MAX = 24
+
+// One bar per event still to come or under way (cancelled and finished ones
+// left out), soonest first, for the club member's registrations chart.
+export function registrationBars(events, now = new Date()) {
+  return events
+    .filter((event) => event.status !== 'cancelled' && event.endsAt.getTime() >= now.getTime())
+    .sort((a, b) => a.startsAt - b.startsAt)
+    .map((event) => {
+      const date = new Date(melbourneDay(event.startsAt))
+      const shortTitle =
+        event.title.length > LABEL_TITLE_MAX ? `${event.title.slice(0, LABEL_TITLE_MAX)}...` : event.title
+      const registered = Math.min(event.registeredCount, event.capacity)
+      return {
+        id: event.id,
+        title: event.title,
+        label: `${shortTitle} (${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]})`,
+        registered,
+        placesLeft: event.capacity - registered,
+        capacity: event.capacity,
+        fillPercent: Math.round((registered / event.capacity) * 100),
+      }
+    })
+}
