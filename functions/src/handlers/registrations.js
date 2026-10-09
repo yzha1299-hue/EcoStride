@@ -1,50 +1,45 @@
+import { FieldValue } from 'firebase-admin/firestore'
 import { EVENT_STATE, eventState } from '../../../shared/eventState.js'
+import { isContention, plainData } from '../core/documents.js'
 import { ApiError, notFound } from '../core/errors.js'
-import { encodeFields, retryOnConflict } from '../core/firestore.js'
 import { EVENT_ID } from '../core/validate.js'
 
 // Registering and cancelling are the only ways registeredCount changes, and
-// they run here rather than in the browser so the capacity cap can't be
-// bypassed. Each one is a read-check-write:
+// they run on the server so the capacity cap can't be bypassed (security rules
+// forbid clients from writing registrations or the count). Each one is a
+// Firestore transaction:
 //
-//   1. read the event (with its updateTime) and the caller's registration;
+//   1. read the event and the caller's registration;
 //   2. check the rules (open, not own event, not already registered, not full);
-//   3. commit the registration change and the count change together, on the
-//      condition that the event hasn't changed since step 1.
+//   3. write the registration and the new count together.
 //
-// If two people race for the last place, both read "1 left", but only the first
-// commit succeeds: it changes the event's updateTime, so the second commit's
-// precondition fails and nothing of it is written. The loser re-reads, now sees
-// the event full, and gets EVENT_FULL. The count can never exceed capacity.
+// Firestore runs transactions on the same event one after another: if two
+// people race for the last place, the second transaction is retried after the
+// first commits, reads the event as full, and gets EVENT_FULL. The count can
+// never exceed capacity, and it always equals the number of registrations.
+const contention = () =>
+  new ApiError(409, 'CONFLICT', 'Lots of people are registering right now. Please try again.')
 const eventCancelled = () => new ApiError(409, 'EVENT_CANCELLED', 'This event has been cancelled.')
 const eventClosed = () =>
   new ApiError(409, 'EVENT_CLOSED', 'This event has already started, so registration is closed.')
 
-// Retried up to 3 times from a fresh read when a commit loses a race.
-const withRetries = (attempt) =>
-  retryOnConflict(attempt, () => new ApiError(409, 'CONFLICT', 'Lots of people are registering right now. Please try again.'))
-
-async function readEventAndRegistration(firestore, eventId, uid) {
-  const eventPath = `events/${eventId}`
-  const registrationPath = `${eventPath}/registrations/${uid}`
-  const [event, registration] = await Promise.all([
-    firestore.getDocument(eventPath),
-    firestore.getDocument(registrationPath),
-  ])
-  if (!event) {
-    throw notFound('This event no longer exists.')
+async function inTransaction(db, work) {
+  try {
+    return await db.runTransaction(work, { maxAttempts: 5 })
+  } catch (error) {
+    if (isContention(error)) throw contention()
+    throw error
   }
-  return { event, registration, eventPath, registrationPath }
 }
 
-function changeCount(firestore, eventPath, event, delta) {
-  return {
-    transform: {
-      document: firestore.documentName(eventPath),
-      fieldTransforms: [{ fieldPath: 'registeredCount', increment: { integerValue: String(delta) } }],
-    },
-    currentDocument: { updateTime: event.updateTime },
+async function readEventAndRegistration(tx, db, eventId, uid) {
+  const eventRef = db.doc(`events/${eventId}`)
+  const registrationRef = eventRef.collection('registrations').doc(uid)
+  const [eventSnapshot, registrationSnapshot] = await tx.getAll(eventRef, registrationRef)
+  if (!eventSnapshot.exists) {
+    throw notFound('This event no longer exists.')
   }
+  return { eventRef, registrationRef, event: plainData(eventSnapshot), registered: registrationSnapshot.exists }
 }
 
 export const registerSchema = {
@@ -54,68 +49,62 @@ export const registerSchema = {
 }
 
 export async function register({ user, body, deps }) {
-  const { firestore } = deps
-
-  return withRetries(async () => {
-    const { event, registration, eventPath, registrationPath } = await readEventAndRegistration(
-      firestore,
+  const { db } = deps
+  return inTransaction(db, async (tx) => {
+    const { eventRef, registrationRef, event, registered } = await readEventAndRegistration(
+      tx,
+      db,
       body.eventId,
       user.uid,
     )
 
-    const state = eventState(event.data)
+    const state = eventState(event)
     if (state === EVENT_STATE.CANCELLED) throw eventCancelled()
     if (state === EVENT_STATE.CLOSED) throw eventClosed()
-    if (event.data.createdBy === user.uid) {
+    if (event.createdBy === user.uid) {
       throw new ApiError(403, 'OWN_EVENT', "You can't register for an event you created.")
     }
-    if (registration) {
+    if (registered) {
       throw new ApiError(409, 'ALREADY_REGISTERED', "You're already registered for this event.")
     }
     if (state === EVENT_STATE.FULL) {
       throw new ApiError(409, 'EVENT_FULL', 'Sorry, this event is now full.')
     }
 
-    await firestore.commit([
-      {
-        update: {
-          name: firestore.documentName(registrationPath),
-          // The email comes from the verified ID token, never from the request.
-          fields: encodeFields({ name: body.name, needs: body.needs ?? '', email: user.email }),
-        },
-        updateTransforms: [{ fieldPath: 'registeredAt', setToServerValue: 'REQUEST_TIME' }],
-        currentDocument: { exists: false },
-      },
-      changeCount(firestore, eventPath, event, 1),
-    ])
+    tx.create(registrationRef, {
+      name: body.name,
+      needs: body.needs ?? '',
+      // From the verified ID token, never from the request.
+      email: user.email,
+      registeredAt: FieldValue.serverTimestamp(),
+    })
+    tx.update(eventRef, { registeredCount: FieldValue.increment(1) })
 
-    return { eventId: body.eventId, registered: true, registeredCount: event.data.registeredCount + 1 }
+    return { eventId: body.eventId, registered: true, registeredCount: event.registeredCount + 1 }
   })
 }
 
 export const cancelSchema = { eventId: EVENT_ID }
 
 export async function cancelRegistration({ user, body, deps }) {
-  const { firestore } = deps
-
-  return withRetries(async () => {
-    const { event, registration, eventPath, registrationPath } = await readEventAndRegistration(
-      firestore,
+  const { db } = deps
+  return inTransaction(db, async (tx) => {
+    const { eventRef, registrationRef, event, registered } = await readEventAndRegistration(
+      tx,
+      db,
       body.eventId,
       user.uid,
     )
 
-    if (!registration) {
+    if (!registered) {
       throw new ApiError(404, 'NOT_REGISTERED', "You aren't registered for this event.")
     }
-    // The roster is fixed once the event is underway.
-    if (event.data.startsAt.getTime() <= Date.now()) throw eventClosed()
+    // The roster is fixed once the event is under way.
+    if (event.startsAt.getTime() <= Date.now()) throw eventClosed()
 
-    await firestore.commit([
-      { delete: firestore.documentName(registrationPath), currentDocument: { exists: true } },
-      changeCount(firestore, eventPath, event, -1),
-    ])
+    tx.delete(registrationRef)
+    tx.update(eventRef, { registeredCount: FieldValue.increment(-1) })
 
-    return { eventId: body.eventId, registered: false, registeredCount: event.data.registeredCount - 1 }
+    return { eventId: body.eventId, registered: false, registeredCount: event.registeredCount - 1 }
   })
 }

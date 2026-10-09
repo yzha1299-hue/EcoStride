@@ -43,6 +43,27 @@ export async function signedInUser(uid, { email = `${uid}@example.com`, emailVer
   return { uid, email, token: idToken }
 }
 
+const HOUR = 60 * 60 * 1000
+
+// Stores an event as the app's event form would, starting a week from now
+// unless overridden. Dates are stored as Firestore timestamps.
+export async function seedEvent(id, overrides = {}) {
+  const startsAt = overrides.startsAt ?? new Date(Date.now() + 7 * 24 * HOUR)
+  await db.doc(`events/${id}`).set({
+    title: 'Bike maintenance basics',
+    type: 'Workshop',
+    venue: 'Brunswick Town Hall',
+    address: '233 Sydney Rd, Brunswick VIC 3056',
+    capacity: 10,
+    registeredCount: 0,
+    status: 'open',
+    createdBy: 'clara',
+    startsAt,
+    endsAt: new Date(startsAt.getTime() + 2 * HOUR),
+    ...overrides,
+  })
+}
+
 // Calls the API as the site does: paths start with /api, exactly as they
 // arrive through the Hosting rewrite in production.
 export async function api(path, { method = 'GET', token, body, headers = {} } = {}) {

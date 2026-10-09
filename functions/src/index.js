@@ -8,6 +8,7 @@ import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
 import { createApi } from './http.js'
 import { me } from './handlers/me.js'
+import { cancelRegistration, cancelSchema, register, registerSchema } from './handlers/registrations.js'
 
 setGlobalOptions({
   // Next to Firestore (australia-southeast1).
@@ -28,6 +29,8 @@ initializeApp()
 // body, the schema that body must match.
 const routes = {
   'GET /me': { handler: me, auth: true },
+  'POST /registrations': { handler: register, auth: true, schema: registerSchema },
+  'POST /registrations/cancel': { handler: cancelRegistration, auth: true, schema: cancelSchema },
 }
 
 // The logger wants a message first; the entry's fields become structured
