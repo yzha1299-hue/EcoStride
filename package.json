@@ -11,11 +11,13 @@
     "lint:oxlint": "oxlint . --fix",
     "lint:eslint": "eslint . --fix --cache",
     "format": "prettier --write --experimental-cli src/",
-    "test": "run-s test:unit test:rules",
+    "test": "run-s test:unit test:rules test:api",
     "test:unit": "vitest run --project unit --passWithNoTests",
     "test:rules": "firebase emulators:exec --only firestore --project demo-ecostride \"vitest run --project rules\"",
     "seed:events": "node scripts/seed-events.mjs",
-    "make-admin": "node scripts/make-admin.mjs"
+    "make-admin": "node scripts/make-admin.mjs",
+    "test:api": "node scripts/test-api.mjs",
+    "dev:api": "node scripts/dev-api.mjs"
   },
   "dependencies": {
     "bootstrap": "^5.3.8",

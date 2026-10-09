@@ -98,6 +98,16 @@ firebase deploy --only hosting,firestore:rules,firestore:indexes
 
 The app uses HTML5 history routing, so `firebase.json` rewrites every path that is not a real file to `index.html`. Without it, opening or refreshing a deep link such as `/events` returns a 404. Hashed files under `/assets` are cached for a year. The app shell - `/`, `index.html` and every extension-less route such as `/events`, which are all rewritten to `index.html` - is served `no-cache`, so a new deploy takes effect on the next page load. (Firebase matches header rules against the requested path, not the rewritten one, so a rule for `/index.html` alone leaves `/events` on the default one-hour cache.)
 
+### API on Cloud Functions (migration from the Worker in progress)
+
+The API is moving from the Cloudflare Worker below to one 2nd-gen Cloud Function, `api`, in `australia-southeast1`. Firebase Hosting serves it on the site's own origin: `firebase.json` rewrites `/api/**` to the function, so the app calls `/api/...` with no CORS. Routes move over one by one; until the switch, the live site still uses the Worker.
+
+- Code: `functions/src` (handlers, pure modules and their unit tests); `functions/src/index.js` is the entry point and `functions/src/http.js` the HTTP adapter. Cloud Functions uploads only `functions/`, so `npm --prefix functions run build` bundles `functions/src` and `shared/` into `functions/lib/` with esbuild; `firebase deploy` runs it automatically (predeploy).
+- Local API: `npm run dev:api` rebuilds on change and serves the function on the Functions emulator; `npm run dev` proxies `/api` to it. It uses the real project's Firestore, so set `GOOGLE_APPLICATION_CREDENTIALS` to a service-account key first (outside the repo). To make the app use it, put `VITE_API_BASE_URL=/api` in `.env.local`.
+- Tests: `npm run test:api` builds the function and runs `tests/api` against it on the Functions, Firestore and Auth emulators (offline `demo-ecostride` project), with real ID tokens from the Auth emulator.
+- One-time setup before the first deploy: in Google Cloud console > IAM & Admin > Service Accounts, create `ecostride-api` (email `ecostride-api@ecostride-82c87.iam.gserviceaccount.com`) with only the **Cloud Datastore User** role and no keys. The function runs as this account.
+- Deploy: `firebase deploy --only functions,hosting`. The first deploy enables the Cloud Functions, Cloud Build, Artifact Registry and Cloud Run APIs.
+
 ### API Worker (Cloudflare Workers)
 
 Server-side logic lives in `worker/` and is deployed separately from the site. It verifies the caller's Firebase ID token itself (with `jose`) and talks to Firestore over its REST API using a service account, because `firebase-admin` does not run on Workers.

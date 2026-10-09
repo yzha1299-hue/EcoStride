@@ -6,7 +6,7 @@ export default defineConfig({
       {
         test: {
           name: 'unit',
-          include: ['src/**/*.test.js', 'shared/**/*.test.js', 'worker/src/**/*.test.js'],
+          include: ['src/**/*.test.js', 'shared/**/*.test.js', 'functions/src/**/*.test.js'],
           environment: 'node',
         },
       },
@@ -20,6 +20,18 @@ export default defineConfig({
           fileParallelism: false,
           testTimeout: 15000,
           hookTimeout: 30000,
+        },
+      },
+      {
+        test: {
+          name: 'api',
+          include: ['tests/api/**/*.test.js'],
+          environment: 'node',
+          // Real HTTP calls to the API function on the Firebase emulators,
+          // which all share one Firestore and Auth emulator.
+          fileParallelism: false,
+          testTimeout: 30000,
+          hookTimeout: 60000,
         },
       },
     ],

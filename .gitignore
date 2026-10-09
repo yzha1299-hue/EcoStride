@@ -48,3 +48,7 @@ __screenshots__/
 
 # Firebase deploy cache
 .firebase/
+
+# Cloud Functions: bundled output and local emulator secrets
+functions/lib/
+functions/.secret.local

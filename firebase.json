@@ -14,6 +14,13 @@
     ],
     "rewrites": [
       {
+        "source": "/api/**",
+        "function": {
+          "functionId": "api",
+          "region": "australia-southeast1"
+        }
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
@@ -58,6 +65,16 @@
     ]
   },
   "emulators": {
+    "hub": {
+      "host": "127.0.0.1",
+      "port": 4400
+    },
+    "auth": {
+      "port": 9099
+    },
+    "functions": {
+      "port": 5001
+    },
     "firestore": {
       "port": 8080
     },
@@ -65,5 +82,22 @@
       "enabled": false
     },
     "singleProjectMode": true
-  }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "runtime": "nodejs22",
+      "ignore": [
+        "node_modules",
+        "src",
+        ".git",
+        "*.local",
+        "firebase-debug.log"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
+    }
+  ]
 }

@@ -23,7 +23,7 @@ export default defineConfig([
 
   {
     name: 'app/node-scripts',
-    files: ['scripts/**/*.{js,mjs}', 'tests/**/*.js', '*.config.js'],
+    files: ['scripts/**/*.{js,mjs}', 'tests/**/*.js', '*.config.js', 'functions/**/*.js'],
     languageOptions: {
       globals: {
         ...globals.node,
