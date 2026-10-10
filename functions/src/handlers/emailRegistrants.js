@@ -1,4 +1,5 @@
 import { ApiError, emailNotVerified, notFound, notOwner } from '../core/errors.js'
+import { plainData } from '../core/documents.js'
 import { escapeHtml } from '../core/email.js'
 import { releaseDailySlot, reserveDailySlot } from '../core/dailyLimit.js'
 import { eventToIcs } from '../core/ics.js'
@@ -105,17 +106,18 @@ export async function emailRegistrants({ user, body, deps }) {
   }
   const attachment = checkAttachment(body)
 
-  const event = await deps.firestore.getDocument(`events/${body.eventId}`)
-  if (!event) {
+  const eventSnapshot = await deps.db.doc(`events/${body.eventId}`).get()
+  if (!eventSnapshot.exists) {
     throw notFound('This event no longer exists.')
   }
-  if (event.data.createdBy !== user.uid) {
+  const event = plainData(eventSnapshot)
+  if (event.createdBy !== user.uid) {
     throw notOwner('Only the club member who created this event can email its registrants.')
   }
 
-  const registrations = await deps.firestore.listDocuments(`events/${body.eventId}/registrations`)
-  const recipients = registrations
-    .map(({ data }) => data)
+  const registrations = await deps.db.collection(`events/${body.eventId}/registrations`).get()
+  const recipients = registrations.docs
+    .map(plainData)
     .filter((registration) => registration.email)
     .map((registration) => ({ email: registration.email, name: registration.name }))
   if (!recipients.length) {
@@ -123,7 +125,7 @@ export async function emailRegistrants({ user, body, deps }) {
   }
 
   const now = new Date()
-  const slot = await reserveDailySlot(deps.firestore, {
+  const slot = await reserveDailySlot(deps.db, {
     collection: 'emailRateLimits',
     key: body.eventId,
     limit: DAILY_LIMIT,
@@ -132,8 +134,8 @@ export async function emailRegistrants({ user, body, deps }) {
     now,
   })
 
-  const eventData = { id: body.eventId, ...event.data }
-  const attachments = [{ name: `${slug(event.data.title)}.ics`, content: eventToIcs(eventData, { now }) }]
+  const eventData = { id: body.eventId, ...event }
+  const attachments = [{ name: `${slug(event.title)}.ics`, content: eventToIcs(eventData, { now }) }]
   if (attachment) {
     attachments.push(attachment)
   }
@@ -149,7 +151,7 @@ export async function emailRegistrants({ user, body, deps }) {
     })
   } catch (error) {
     // A send that failed shouldn't use up one of the day's slots.
-    await releaseDailySlot(deps.firestore, slot.path)
+    await releaseDailySlot(deps.db, slot.path)
     throw error
   }
 
