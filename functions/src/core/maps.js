@@ -4,14 +4,14 @@ import { fetchUpstream } from './upstream.js'
 
 // Place search (OpenStreetMap Nominatim), walking/cycling directions
 // (OpenRouteService) and nearby facilities (Overpass API), called from the
-// Worker so the ORS key never reaches the browser and each service's usage
+// Cloud Function so the ORS key never reaches the browser and each service's usage
 // policy can be respected in one place.
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
 const ORS_URL = 'https://api.openrouteservice.org/v2/directions'
 const OVERPASS_URL = 'https://overpass-api.de/api/interpreter'
 
 // Nominatim allows at most 1 request per second and asks for an identifying
-// User-Agent. Requests from this isolate are spaced 1 s apart; anyone who would
+// User-Agent. Requests from this instance are spaced 1 s apart; anyone who would
 // wait more than a few seconds is told to try again instead.
 const NOMINATIM_GAP_MS = 1000
 const MAX_WAIT_MS = 3000

@@ -2,13 +2,22 @@
 // served on the site's origin at /api/** by a Firebase Hosting rewrite.
 import { setGlobalOptions } from 'firebase-functions/v2'
 import { onRequest } from 'firebase-functions/v2/https'
-import { defineSecret } from 'firebase-functions/params'
+import { defineSecret, defineString } from 'firebase-functions/params'
 import { logger } from 'firebase-functions'
 import { initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
 import { createApi } from './http.js'
 import { createEmailSender } from './core/email.js'
+import { createMapServices } from './core/maps.js'
+import {
+  geoDirections,
+  geoDirectionsSchema,
+  geoNearby,
+  geoNearbySchema,
+  geoSearch,
+  geoSearchSchema,
+} from './handlers/geo.js'
 import { me } from './handlers/me.js'
 import {
   EMAIL_REGISTRANTS_MAX_BODY_BYTES,
@@ -38,6 +47,12 @@ initializeApp()
 // with none set, email endpoints answer EMAIL_UNAVAILABLE.
 const BREVO_API_KEY = defineSecret('BREVO_API_KEY')
 const BREVO_SENDER_EMAIL = defineSecret('BREVO_SENDER_EMAIL')
+// Map lookups: the OpenRouteService key is a secret; the User-Agent that
+// Nominatim and Overpass require is not, so it is a plain parameter, set in
+// functions/.env.ecostride-82c87. The empty default means the map endpoints
+// answer GEO_UNAVAILABLE wherever it isn't set (e.g. the offline test project).
+const ORS_API_KEY = defineSecret('ORS_API_KEY')
+const NOMINATIM_USER_AGENT = defineString('NOMINATIM_USER_AGENT', { default: '' })
 
 // Each route: whether it needs a signed-in caller and, for requests with a
 // body, the schema that body must match.
@@ -52,7 +67,16 @@ const routes = {
     schema: emailRegistrantsSchema,
     maxBodyBytes: EMAIL_REGISTRANTS_MAX_BODY_BYTES,
   },
+  'POST /geo/search': { handler: geoSearch, auth: true, schema: geoSearchSchema },
+  'POST /geo/directions': { handler: geoDirections, auth: true, schema: geoDirectionsSchema },
+  'POST /geo/nearby': { handler: geoNearby, auth: true, schema: geoNearbySchema },
 }
+
+// Built once per instance, not per request: the map services hold the caches
+// and the Nominatim throttle, which only work if they outlive a request.
+let maps
+const mapServices = () =>
+  (maps ??= createMapServices({ orsApiKey: ORS_API_KEY.value(), userAgent: NOMINATIM_USER_AGENT.value() }))
 
 // The logger wants a message first; the entry's fields become structured
 // fields in Cloud Logging (filterable by endpoint, outcome, status...).
@@ -69,13 +93,14 @@ export const api = onRequest(
     // read responses. Set explicitly because the Functions emulator otherwise
     // turns CORS on for every origin, which would hide the difference.
     cors: false,
-    secrets: [BREVO_API_KEY, BREVO_SENDER_EMAIL],
+    secrets: [BREVO_API_KEY, BREVO_SENDER_EMAIL, ORS_API_KEY],
   },
   createApi({
     routes,
     auth: () => getAuth(),
     deps: () => ({
       db: getFirestore(),
+      maps: mapServices(),
       email: createEmailSender({ apiKey: BREVO_API_KEY.value(), senderEmail: BREVO_SENDER_EMAIL.value() }),
     }),
     log,
