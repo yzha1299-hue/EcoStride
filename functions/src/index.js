@@ -21,6 +21,7 @@ import {
 } from './handlers/geo.js'
 import { aiDraft, aiDraftSchema } from './handlers/aiDraft.js'
 import { me } from './handlers/me.js'
+import { createPublicApi, isPublicRequest } from './public/publicApi.js'
 import {
   EMAIL_REGISTRANTS_MAX_BODY_BYTES,
   emailRegistrants,
@@ -60,6 +61,10 @@ const NOMINATIM_USER_AGENT = defineString('NOMINATIM_USER_AGENT', { default: '' 
 // means the endpoint answers AI_UNAVAILABLE.
 const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY')
 const GEMINI_MODEL = defineString('GEMINI_MODEL', { default: '' })
+// Public API: caller keys as comma-separated name:key pairs (see
+// docs/public-api.md), and the site that event links point to.
+const PUBLIC_API_KEYS = defineSecret('PUBLIC_API_KEYS')
+const PUBLIC_SITE_URL = defineString('PUBLIC_SITE_URL', { default: 'https://ecostride-82c87.web.app' })
 
 // Each route: whether it needs a signed-in caller and, for requests with a
 // body, the schema that body must match.
@@ -93,25 +98,37 @@ function log(level, entry) {
   logger[level](message, entry)
 }
 
+// /api/public/** is the partner-facing API (API keys, open to any origin);
+// everything else is the app's own API (Firebase sign-in, same origin only).
+const dispatch = (appApi, publicApi) => (req, res) => (isPublicRequest(req) ? publicApi(req, res) : appApi(req, res))
+
 export const api = onRequest(
   {
     // Reached through Hosting by anyone; each route checks the caller itself.
     invoker: 'public',
-    // Same-origin API: no CORS headers at all, so other sites' pages can't
-    // read responses. Set explicitly because the Functions emulator otherwise
+    // No CORS headers from the platform: the app's API is same-origin only,
+    // and the public API adds its own. Set explicitly because the Functions emulator otherwise
     // turns CORS on for every origin, which would hide the difference.
     cors: false,
-    secrets: [BREVO_API_KEY, BREVO_SENDER_EMAIL, ORS_API_KEY, GEMINI_API_KEY],
+    secrets: [BREVO_API_KEY, BREVO_SENDER_EMAIL, ORS_API_KEY, GEMINI_API_KEY, PUBLIC_API_KEYS],
   },
-  createApi({
-    routes,
-    auth: () => getAuth(),
-    deps: () => ({
-      db: getFirestore(),
-      maps: mapServices(),
-      ai: createTextGenerator({ apiKey: GEMINI_API_KEY.value(), model: GEMINI_MODEL.value() }),
-      email: createEmailSender({ apiKey: BREVO_API_KEY.value(), senderEmail: BREVO_SENDER_EMAIL.value() }),
+  dispatch(
+    createApi({
+      routes,
+      auth: () => getAuth(),
+      deps: () => ({
+        db: getFirestore(),
+        maps: mapServices(),
+        ai: createTextGenerator({ apiKey: GEMINI_API_KEY.value(), model: GEMINI_MODEL.value() }),
+        email: createEmailSender({ apiKey: BREVO_API_KEY.value(), senderEmail: BREVO_SENDER_EMAIL.value() }),
+      }),
+      log,
     }),
-    log,
-  }),
+    createPublicApi({
+      keys: () => PUBLIC_API_KEYS.value(),
+      siteUrl: () => PUBLIC_SITE_URL.value(),
+      db: () => getFirestore(),
+      log,
+    }),
+  ),
 )

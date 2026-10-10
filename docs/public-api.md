@@ -2,9 +2,9 @@
 
 Read-only REST API for partners - councils, community sites, club websites - to show EcoStride's upcoming active-travel and sustainability events in Melbourne. It exposes events only: never names, emails, accessibility needs or anything else about the people who register.
 
-- **Base URL:** `https://ecostride-api.ecostride.workers.dev`
+- **Base URL:** `https://ecostride-82c87.web.app/api` (the paths below, such as `/public/v1/events`, are relative to it)
 - **Format:** JSON (UTF-8). Times are ISO 8601 in UTC.
-- **Machine-readable spec:** [`GET /public/v1/openapi.json`](https://ecostride-api.ecostride.workers.dev/public/v1/openapi.json) (OpenAPI 3; no key needed) - import it into Postman, Insomnia or Swagger Editor.
+- **Machine-readable spec:** [`GET /api/public/v1/openapi.json`](https://ecostride-82c87.web.app/api/public/v1/openapi.json) (OpenAPI 3; no key needed) - import it into Postman, Insomnia or Swagger Editor.
 
 ## Authentication
 
@@ -18,7 +18,7 @@ Keys are issued by EcoStride staff; ask the team for one. Keep it out of public 
 
 ## Rate limits
 
-60 requests per minute per key. Every response includes `X-RateLimit-Remaining`. Over the limit you get `429 Too Many Requests` with a `Retry-After` header (seconds). Responses may be cached for 60 seconds (`Cache-Control: public, max-age=60`), so polling more often than once a minute gains nothing.
+60 requests per minute per key. Every response includes `X-RateLimit-Remaining`. Over the limit you get `429 Too Many Requests` with a `Retry-After` header (seconds). Responses may be cached for 60 seconds (`Cache-Control: private, max-age=60`; `private` so a shared cache never hands one key holder's response to another), so polling more often than once a minute gains nothing.
 
 ## Endpoints
 
@@ -105,16 +105,16 @@ curl:
 
 ```sh
 curl -H "X-API-Key: $ECOSTRIDE_KEY" \
-  "https://ecostride-api.ecostride.workers.dev/public/v1/events?type=workshop&limit=5"
+  "https://ecostride-82c87.web.app/api/public/v1/events?type=workshop&limit=5"
 
 curl -H "X-API-Key: $ECOSTRIDE_KEY" \
-  "https://ecostride-api.ecostride.workers.dev/public/v1/events/bike-maintenance"
+  "https://ecostride-82c87.web.app/api/public/v1/events/bike-maintenance"
 ```
 
 JavaScript (browser or Node 18+) - the API allows requests from any website:
 
 ```js
-const response = await fetch('https://ecostride-api.ecostride.workers.dev/public/v1/events?limit=5', {
+const response = await fetch('https://ecostride-82c87.web.app/api/public/v1/events?limit=5', {
   headers: { 'X-API-Key': ECOSTRIDE_KEY },
 })
 if (!response.ok) {
@@ -130,14 +130,14 @@ for (const event of data) {
 
 ## For EcoStride staff: issuing and revoking keys
 
-Keys live in the Worker secret `PUBLIC_API_KEYS` as comma-separated `name:key` pairs, e.g. `demo:3f9a...,council-widget:81c2...`. The name appears in logs and rate limits; the key is never logged.
+Keys live in the Cloud Functions secret `PUBLIC_API_KEYS` (Secret Manager) as comma-separated `name:key` pairs, e.g. `demo:3f9a...,council-widget:81c2...`. The name appears in logs and rate limits; the key is never logged.
 
 ```sh
 # a new random key (PowerShell)
 node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"
 # then set the whole list again, including existing keys you want to keep
-cd worker
-npx wrangler secret put PUBLIC_API_KEYS
+firebase functions:secrets:set PUBLIC_API_KEYS --project ecostride-82c87
+firebase deploy --only functions --project ecostride-82c87
 ```
 
-To revoke a key, set the secret again without it. Changes apply within seconds; no redeploy needed.
+To revoke a key, set the secret again without it and redeploy. A function reads its secrets when a new version starts, so the change applies once the deploy finishes.

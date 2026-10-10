@@ -1,4 +1,4 @@
-// API keys for the public API, kept in the PUBLIC_API_KEYS Worker secret as
+// API keys for the public API, kept in the PUBLIC_API_KEYS secret as
 // comma-separated `name:key` pairs, e.g. "demo:3f9a...,council-widget:81c2...".
 // The name identifies the caller in logs and rate limits; the key itself is
 // never logged. Issuing or revoking a key is just editing the secret.
@@ -38,9 +38,9 @@ export function findApiKey(keys, presented) {
 }
 
 // Fixed-window counter per key name: at most `limit` requests per window.
-// Kept in the isolate's memory (like the other Worker caches), so it limits
-// each isolate rather than being exactly global - enough to stop a runaway
-// client from exhausting the Worker and Firestore quotas.
+// Kept in the instance's memory (like the other caches), so it limits
+// each instance rather than being exactly global - enough to stop a runaway
+// client from exhausting the function and Firestore quotas.
 export function createRateLimiter({ limit, windowMs, maxKeys = 1000 }) {
   const windows = new Map()
 

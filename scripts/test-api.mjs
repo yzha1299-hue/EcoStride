@@ -6,7 +6,7 @@
 // after 10 s by default, which a cold start on Windows (with the Java
 // emulators starting at the same time) can exceed; 60 s is allowed instead.
 import { spawnSync } from 'node:child_process'
-import { existsSync, renameSync, rmSync } from 'node:fs'
+import { existsSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 
 const run = (command) => {
   const result = spawnSync(command, {
@@ -17,9 +17,10 @@ const run = (command) => {
   if (result.status !== 0) process.exit(result.status ?? 1)
 }
 
-// The tests assume no email or map secrets, so a developer's real keys in
+// The tests assume no email, map or AI secrets, so a developer's real keys in
 // functions/.secret.local must not leak in: the emulator would send real
-// email. The file is moved aside for the run and always put back.
+// email. The file is moved aside for the run and always put back; the run
+// gets its own file with only the public API's test keys.
 const SECRETS = 'functions/.secret.local'
 const ASIDE = `${SECRETS}.aside`
 if (existsSync(ASIDE)) {
@@ -28,11 +29,13 @@ if (existsSync(ASIDE)) {
 }
 const hadSecrets = existsSync(SECRETS)
 if (hadSecrets) renameSync(SECRETS, ASIDE)
+writeFileSync(SECRETS, 'PUBLIC_API_KEYS=demo:demo-test-key,burst:burst-test-key\n')
 // The emulator writes the parameters it resolved for the offline test project
 // (empty here) to functions/.env.local, which would then override the real
 // values in functions/.env.ecostride-82c87 when `npm run dev:api` runs.
 const GENERATED_ENV = 'functions/.env.local'
 const restore = () => {
+  rmSync(SECRETS, { force: true })
   if (hadSecrets && existsSync(ASIDE)) renameSync(ASIDE, SECRETS)
   rmSync(GENERATED_ENV, { force: true })
 }
