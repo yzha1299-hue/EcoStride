@@ -9,6 +9,7 @@ import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
 import { createApi } from './http.js'
 import { createEmailSender } from './core/email.js'
+import { createTextGenerator } from './core/genai.js'
 import { createMapServices } from './core/maps.js'
 import {
   geoDirections,
@@ -18,6 +19,7 @@ import {
   geoSearch,
   geoSearchSchema,
 } from './handlers/geo.js'
+import { aiDraft, aiDraftSchema } from './handlers/aiDraft.js'
 import { me } from './handlers/me.js'
 import {
   EMAIL_REGISTRANTS_MAX_BODY_BYTES,
@@ -53,6 +55,11 @@ const BREVO_SENDER_EMAIL = defineSecret('BREVO_SENDER_EMAIL')
 // answer GEO_UNAVAILABLE wherever it isn't set (e.g. the offline test project).
 const ORS_API_KEY = defineSecret('ORS_API_KEY')
 const NOMINATIM_USER_AGENT = defineString('NOMINATIM_USER_AGENT', { default: '' })
+// "Draft with AI": the Gemini key is a secret, the model a plain parameter
+// (functions/.env.ecostride-82c87) so it can be changed without code. Empty
+// means the endpoint answers AI_UNAVAILABLE.
+const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY')
+const GEMINI_MODEL = defineString('GEMINI_MODEL', { default: '' })
 
 // Each route: whether it needs a signed-in caller and, for requests with a
 // body, the schema that body must match.
@@ -70,6 +77,7 @@ const routes = {
   'POST /geo/search': { handler: geoSearch, auth: true, schema: geoSearchSchema },
   'POST /geo/directions': { handler: geoDirections, auth: true, schema: geoDirectionsSchema },
   'POST /geo/nearby': { handler: geoNearby, auth: true, schema: geoNearbySchema },
+  'POST /ai/draft': { handler: aiDraft, auth: true, schema: aiDraftSchema },
 }
 
 // Built once per instance, not per request: the map services hold the caches
@@ -93,7 +101,7 @@ export const api = onRequest(
     // read responses. Set explicitly because the Functions emulator otherwise
     // turns CORS on for every origin, which would hide the difference.
     cors: false,
-    secrets: [BREVO_API_KEY, BREVO_SENDER_EMAIL, ORS_API_KEY],
+    secrets: [BREVO_API_KEY, BREVO_SENDER_EMAIL, ORS_API_KEY, GEMINI_API_KEY],
   },
   createApi({
     routes,
@@ -101,6 +109,7 @@ export const api = onRequest(
     deps: () => ({
       db: getFirestore(),
       maps: mapServices(),
+      ai: createTextGenerator({ apiKey: GEMINI_API_KEY.value(), model: GEMINI_MODEL.value() }),
       email: createEmailSender({ apiKey: BREVO_API_KEY.value(), senderEmail: BREVO_SENDER_EMAIL.value() }),
     }),
     log,

@@ -28,10 +28,11 @@ export function createTextGenerator({ apiKey, model }) {
           },
         }),
       },
-      // 429: the free tier's per-minute quota is used up - worth its own message.
-      { timeoutMs: 25000, allowStatuses: [429] },
+      // 429: the free tier's per-minute quota is used up. 503: the model is
+      // overloaded. Both pass in a minute, so they share one message.
+      { timeoutMs: 25000, allowStatuses: [429, 503] },
     )
-    if (response.status === 429) {
+    if (response.status === 429 || response.status === 503) {
       throw new ApiError(503, 'AI_BUSY', 'The AI service is busy right now. Please try again in a minute.')
     }
     return response.json()

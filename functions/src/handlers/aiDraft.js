@@ -1,10 +1,11 @@
 import { descriptionPrompt, emailPrompt, parseDraft } from '../ai/drafts.js'
 import { releaseDailySlot, reserveDailySlot } from '../core/dailyLimit.js'
+import { plainData } from '../core/documents.js'
 import { ApiError, notFound, notOwner } from '../core/errors.js'
 import { EVENT_ID } from '../core/validate.js'
 
 // "Draft with AI" for club members: an email to an event's registrants, or a
-// description for the event form. The Worker holds the Gemini key and builds
+// description for the event form. The function holds the Gemini key and builds
 // the prompt itself, from event details only - registrations are never read
 // here, so no registrant data can reach the AI service. The draft is only
 // returned to the organiser to edit; nothing is sent or saved.
@@ -26,25 +27,26 @@ export const aiDraftSchema = {
   instructions: text(500),
 }
 
-async function requireClubMember(firestore, uid) {
-  const profile = await firestore.getDocument(`users/${uid}`)
-  if (profile?.data.role !== 'clubMember') {
+async function requireClubMember(db, uid) {
+  const profile = await db.doc(`users/${uid}`).get()
+  if (profile.get('role') !== 'clubMember') {
     throw new ApiError(403, 'NOT_CLUB_MEMBER', 'Only club members can use AI drafting.')
   }
 }
 
-async function promptFor(body, user, firestore) {
+async function promptFor(body, user, db) {
   if (body.kind === 'registrant-email') {
     if (!body.eventId) throw new ApiError(400, 'INVALID_REQUEST', 'eventId is required.')
-    const event = await firestore.getDocument(`events/${body.eventId}`)
-    if (!event) throw notFound('This event no longer exists.')
-    if (event.data.createdBy !== user.uid) {
+    const snapshot = await db.doc(`events/${body.eventId}`).get()
+    if (!snapshot.exists) throw notFound('This event no longer exists.')
+    const event = plainData(snapshot)
+    if (event.createdBy !== user.uid) {
       throw notOwner('Only the club member who created this event can draft emails about it.')
     }
-    return emailPrompt(event.data, body.instructions)
+    return emailPrompt(event, body.instructions)
   }
 
-  await requireClubMember(firestore, user.uid)
+  await requireClubMember(db, user.uid)
   if (!body.title) throw new ApiError(400, 'INVALID_REQUEST', 'Give the event a title first.')
   return descriptionPrompt(
     {
@@ -63,9 +65,9 @@ async function promptFor(body, user, firestore) {
 }
 
 export async function aiDraft({ user, body, deps }) {
-  const { system, prompt, schema } = await promptFor(body, user, deps.firestore)
+  const { system, prompt, schema } = await promptFor(body, user, deps.db)
 
-  const slot = await reserveDailySlot(deps.firestore, {
+  const slot = await reserveDailySlot(deps.db, {
     collection: 'aiUsage',
     key: user.uid,
     limit: AI_DAILY_LIMIT,
@@ -76,7 +78,7 @@ export async function aiDraft({ user, body, deps }) {
     return { draft: parseDraft(response, body.kind), remainingToday: slot.remaining }
   } catch (error) {
     // A draft that didn't arrive shouldn't count towards the limit.
-    await releaseDailySlot(deps.firestore, slot.path)
+    await releaseDailySlot(deps.db, slot.path)
     throw error
   }
 }
