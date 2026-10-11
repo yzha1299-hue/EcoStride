@@ -99,6 +99,11 @@ export const geoNearby = ({ start, end }) =>
     body: { lat: start.lat, lng: start.lng, endLat: end?.lat, endLng: end?.lng },
   })
 
+// Admin only: approve or decline a participant's request to become a club member.
+export const approveClubRequest = (uid) => apiFetch('/admin/club-requests/approve', { method: 'POST', body: { uid } })
+
+export const declineClubRequest = (uid) => apiFetch('/admin/club-requests/decline', { method: 'POST', body: { uid } })
+
 // "Draft with AI". kind: "registrant-email" (with eventId) or "event-description"
 // (with the form fields typed so far). Returns { draft, remainingToday }.
 export const aiDraft = (body) => apiFetch('/ai/draft', { method: 'POST', body })

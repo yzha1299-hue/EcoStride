@@ -2,10 +2,12 @@
 import { computed, onMounted, ref } from 'vue'
 import { collection, getCountFromServer, getDocs, getFirestore, query, where } from 'firebase/firestore'
 import { Bar } from 'vue-chartjs'
+import { approveClubRequest, declineClubRequest } from '../api/client'
 import { ROLE_LABELS, ROLES } from '../auth/authState'
 import { useEvents } from '../composables/useEvents'
 import { eventsByType, roleCounts, signupsPerWeek, summariseEvents } from '../utils/dashboard'
-import { formatNumber } from '../utils/format'
+import { pendingRequestRows } from '../utils/clubRequests'
+import { formatDateTime, formatNumber } from '../utils/format'
 import { barOptions, CHART_COLORS } from '../utils/charts'
 import ChartPanel from '../components/ChartPanel.vue'
 
@@ -18,7 +20,7 @@ const usersError = ref('')
 
 const ROLE_ORDER = [ROLES.PARTICIPANT, ROLES.CLUB_MEMBER, ROLES.ADMIN]
 
-onMounted(async () => {
+async function loadUserCounts() {
   const users = collection(getFirestore(), 'users')
   try {
     const [total, ...byRole] = await Promise.all([
@@ -34,7 +36,53 @@ onMounted(async () => {
   } finally {
     usersLoading.value = false
   }
-})
+}
+onMounted(loadUserCounts)
+
+// --- Club member requests -------------------------------------------------
+// Participants who asked to become club members. Approving or declining goes
+// through the API: only the server can change a role.
+const requests = ref([])
+const requestsLoading = ref(true)
+const requestsError = ref('')
+const busyUid = ref('')
+const decisionMessage = ref('')
+const decisionError = ref('')
+
+async function loadRequests() {
+  requestsError.value = ''
+  try {
+    const snapshot = await getDocs(query(collection(getFirestore(), 'users'), where('clubRequest', '==', 'pending')))
+    requests.value = pendingRequestRows(
+      snapshot.docs.map((doc) => ({ uid: doc.id, data: { ...doc.data(), createdAt: doc.data().createdAt?.toDate() ?? null } })),
+    )
+  } catch {
+    requestsError.value = 'Unable to load club member requests right now. Please try again.'
+  } finally {
+    requestsLoading.value = false
+  }
+}
+onMounted(loadRequests)
+
+async function decide(row, approve) {
+  busyUid.value = row.uid
+  decisionMessage.value = ''
+  decisionError.value = ''
+  try {
+    await (approve ? approveClubRequest : declineClubRequest)(row.uid)
+    requests.value = requests.value.filter((item) => item.uid !== row.uid)
+    decisionMessage.value = approve
+      ? `${row.email} is now a club member.`
+      : `${row.email} was declined and stays a participant.`
+    if (approve) loadUserCounts()
+  } catch (error) {
+    decisionError.value = error.message
+    // Someone else already decided it: show the list as it is now.
+    if (error.code === 'NO_PENDING_REQUEST') await loadRequests()
+  } finally {
+    busyUid.value = ''
+  }
+}
 
 // Sign-up dates for the weekly chart. Only createdAt is used; nothing else
 // from the profiles is shown.
@@ -104,6 +152,46 @@ const percent = (part, whole) => (whole ? Math.round((part / whole) * 100) : 0)
   <div class="container py-5">
     <h1 class="h2 fw-bold mb-1">Admin dashboard</h1>
     <p class="text-muted mb-4">An overview of EcoStride: who uses it and how upcoming events are filling up.</p>
+
+    <section class="mb-5" aria-labelledby="requests-heading">
+      <h2 id="requests-heading" class="h4 fw-bold mb-1">Club member requests</h2>
+      <p class="small text-muted mb-3">
+        People who signed up wanting to be club members. They are participants until you approve them.
+      </p>
+      <p v-if="requestsLoading" class="text-muted">Loading requests...</p>
+      <p v-else-if="requestsError" class="text-danger" role="alert">{{ requestsError }}</p>
+      <p v-else-if="!requests.length" class="text-muted">No requests are waiting.</p>
+      <ul v-else class="list-group">
+        <li v-for="row in requests" :key="row.uid" class="list-group-item d-flex flex-wrap align-items-center gap-2">
+          <div class="me-auto">
+            <p class="fw-semibold mb-0">{{ row.email }}</p>
+            <p class="small text-muted mb-0">
+              Signed up {{ row.requestedAt ? formatDateTime(row.requestedAt) : 'at an unknown time' }}
+            </p>
+          </div>
+          <button
+            class="btn btn-success btn-sm"
+            type="button"
+            :disabled="busyUid === row.uid"
+            :aria-label="`Approve ${row.email} as a club member`"
+            @click="decide(row, true)"
+          >
+            Approve
+          </button>
+          <button
+            class="btn btn-outline-secondary btn-sm"
+            type="button"
+            :disabled="busyUid === row.uid"
+            :aria-label="`Decline ${row.email}'s club member request`"
+            @click="decide(row, false)"
+          >
+            Decline
+          </button>
+        </li>
+      </ul>
+      <p class="small mt-2 mb-0" role="status">{{ decisionMessage }}</p>
+      <p class="small text-danger mt-2 mb-0" role="alert">{{ decisionError }}</p>
+    </section>
 
     <section class="mb-5" aria-labelledby="users-heading">
       <h2 id="users-heading" class="h4 fw-bold mb-3">Users</h2>

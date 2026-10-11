@@ -82,6 +82,10 @@ npm run make-admin -- <uid> --revoke   # back to participant
 
 The account must have signed up and chosen a role first. Find its uid in Firebase console > Authentication > Users. The user sees the change after signing in again (or reloading).
 
+### Club member approval
+
+Nobody can sign up as a club member directly. Choosing "Club member" at sign-up creates a participant account with a pending request (`clubRequest: 'pending'` on `users/{uid}`); a banner tells the person their request is waiting. Admins see the pending requests at the top of the Admin dashboard and approve or decline each one. That calls `POST /api/admin/club-requests/approve` or `.../decline`, which changes the role on the server: security rules forbid every browser write to a profile, so a role can't be granted from the client. A declined person stays a participant and sees a dismissible notice.
+
 ### Deploy to Firebase Hosting
 
 One-time setup:
