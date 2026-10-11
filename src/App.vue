@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AppHeader from './components/AppHeader.vue'
 import AppFooter from './components/AppFooter.vue'
 import EmailVerificationNotice from './components/EmailVerificationNotice.vue'
+import ClubRequestNotice from './components/ClubRequestNotice.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -35,6 +36,7 @@ watch(
     <a class="skip-link visually-hidden-focusable" href="#main-content">Skip to main content</a>
     <AppHeader />
     <EmailVerificationNotice />
+    <ClubRequestNotice />
     <main id="main-content" ref="main" class="flex-grow-1" tabindex="-1">
       <RouterView />
     </main>
