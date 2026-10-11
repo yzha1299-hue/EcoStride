@@ -8,7 +8,15 @@ import { fetchUpstream } from './upstream.js'
 // policy can be respected in one place.
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
 const ORS_URL = 'https://api.openrouteservice.org/v2/directions'
-const OVERPASS_URL = 'https://overpass-api.de/api/interpreter'
+// Public Overpass servers, tried in this order. Any one of them is often
+// overloaded or unreachable (especially from cloud hosting), so a lookup moves
+// on to the next; the one that last worked goes first next time.
+const OVERPASS_URLS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://z.overpass-api.de/api/interpreter',
+  'https://overpass.openstreetmap.fr/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+]
 
 // Nominatim allows at most 1 request per second and asks for an identifying
 // User-Agent. Requests from this instance are spaced 1 s apart; anyone who would
@@ -160,6 +168,39 @@ export function createMapServices({ orsApiKey, userAgent }) {
     return nearbyInFlight.get(key)
   }
 
+  let preferredOverpass = 0
+
+  // Sends the query to each server in turn until one gives a usable answer.
+  async function askOverpass(query) {
+    for (let attempt = 0; attempt < OVERPASS_URLS.length; attempt += 1) {
+      const index = (preferredOverpass + attempt) % OVERPASS_URLS.length
+      try {
+        const response = await fetchUpstream(
+          'The nearby places service',
+          OVERPASS_URLS[index],
+          {
+            method: 'POST',
+            headers: { 'User-Agent': userAgent, 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ data: query }),
+          },
+          // A server that is rationing or failing is skipped, not fatal: the
+          // next one may well answer.
+          { timeoutMs: 12000, allowStatuses: [429, 500, 502, 503, 504] },
+        )
+        if (!response.ok) continue
+        const result = await response.json()
+        // A query that runs out of time on the server still comes back as 200,
+        // with a "runtime error" remark instead of results.
+        if (!result.elements?.length && /runtime error/i.test(result.remark ?? '')) continue
+        preferredOverpass = index
+        return result
+      } catch (error) {
+        if (!(error instanceof ApiError) || !['UPSTREAM_ERROR', 'UPSTREAM_TIMEOUT'].includes(error.code)) throw error
+      }
+    }
+    throw new ApiError(503, 'GEO_BUSY', 'The nearby places service is busy right now. Please try again in a minute.')
+  }
+
   async function queryOverpass(coordinates) {
     // One statement matching all three amenity values: about 3x faster on
     // Overpass than a separate "around" search per type.
@@ -168,26 +209,7 @@ export function createMapServices({ orsApiKey, userAgent }) {
       `[out:json][timeout:20];` +
       `nwr(around:${NEARBY_RADIUS_M},${coordinates.join(',')})["amenity"~"^(${amenities})$"];` +
       `out center ${MAX_PLACES};`
-    const response = await fetchUpstream(
-      'The nearby places service',
-      OVERPASS_URL,
-      {
-        method: 'POST',
-        headers: { 'User-Agent': userAgent, 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ data: query }),
-      },
-      // 429/504: the public Overpass server is rationing its capacity (it
-      // limits requests per IP, and Workers share IPs). Not our fault, not
-      // permanent - say so rather than "returned an error".
-      { timeoutMs: 20000, allowStatuses: [429, 504] },
-    )
-    const busy = () =>
-      new ApiError(503, 'GEO_BUSY', 'The nearby places service is busy right now. Please try again in a minute.')
-    if (!response.ok) throw busy()
-    const result = await response.json()
-    // A query that runs out of time on the server still comes back as 200,
-    // with a "runtime error" remark instead of results.
-    if (!result.elements?.length && /runtime error/i.test(result.remark ?? '')) throw busy()
+    const result = await askOverpass(query)
     return result.elements
       .map((element) => {
         const tags = element.tags ?? {}

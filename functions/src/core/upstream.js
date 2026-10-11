@@ -13,7 +13,10 @@ export async function fetchUpstream(service, url, init = {}, { timeoutMs = 8000,
     if (error?.name === 'TimeoutError') {
       throw new ApiError(504, 'UPSTREAM_TIMEOUT', `${service} took too long to respond.`)
     }
-    throw new ApiError(502, 'UPSTREAM_ERROR', `Could not reach ${service}.`)
+    const unreachable = new ApiError(502, 'UPSTREAM_ERROR', `Could not reach ${service}.`)
+    // Kept for server logs only: why the connection failed (DNS, reset, ...).
+    unreachable.upstreamDetail = [error?.message, error?.cause?.code, error?.cause?.message].filter(Boolean).join(' | ')
+    throw unreachable
   }
 
   if (!response.ok && !allowStatuses.includes(response.status)) {
