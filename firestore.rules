@@ -5,8 +5,9 @@ service cloud.firestore {
     // Each user's role assignment. Written once at registration and never
     // editable afterwards, so a signed-in client cannot grant itself a
     // higher-privilege role by rewriting its own document or local storage.
-    // Admins (charity staff) are made only by scripts/make-admin.mjs with the
-    // Admin SDK - the create rule below never accepts 'admin'. They may read
+    // Club members are approved by an admin through the API; admins (charity
+    // staff) are made only by scripts/make-admin.mjs with the Admin SDK - the
+    // create rule below accepts only 'participant'. They may read
     // every profile, for the dashboard's user counts, but not change any.
     function isAdmin() {
       return request.auth != null
@@ -16,11 +17,16 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
 
+      // A new account is always a participant. Wanting to be a club member is
+      // a request ('clubRequest': 'pending') that an admin approves through the
+      // API, which then changes the role with the Admin SDK; the browser can
+      // never write 'clubMember' (or any later change) itself.
       allow create: if request.auth != null
         && request.auth.uid == userId
-        && request.resource.data.keys().hasOnly(['email', 'role', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['email', 'role', 'createdAt', 'clubRequest'])
         && request.resource.data.email == request.auth.token.email
-        && request.resource.data.role in ['participant', 'clubMember'];
+        && request.resource.data.role == 'participant'
+        && request.resource.data.get('clubRequest', 'pending') == 'pending';
 
       allow update: if false;
       allow delete: if false;
