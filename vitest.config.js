@@ -6,7 +6,7 @@ export default defineConfig({
       {
         test: {
           name: 'unit',
-          include: ['src/**/*.test.js', 'shared/**/*.test.js', 'functions/src/**/*.test.js'],
+          include: ['src/**/*.test.js', 'shared/**/*.test.js', 'functions/src/**/*.test.js', 'scripts/**/*.test.js'],
           environment: 'node',
         },
       },

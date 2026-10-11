@@ -18,7 +18,7 @@ Keys are issued by EcoStride staff; ask the team for one. Keep it out of public 
 
 ## Rate limits
 
-60 requests per minute per key. Every response includes `X-RateLimit-Remaining`. Over the limit you get `429 Too Many Requests` with a `Retry-After` header (seconds). Responses may be cached for 60 seconds (`Cache-Control: private, max-age=60`; `private` so a shared cache never hands one key holder's response to another), so polling more often than once a minute gains nothing.
+60 requests per minute per key. Every response includes `X-RateLimit-Remaining`. Over the limit you get `429 Too Many Requests` with a `Retry-After` header (seconds). Responses are never cached by shared caches, so one key holder never receives another's. EcoStride itself refreshes its list of events at most once a minute, so polling more often than once a minute gains nothing.
 
 ## Endpoints
 

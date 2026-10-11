@@ -50,6 +50,8 @@ The first Lighthouse run flagged an unnamed progress bar (Impact), and small or 
 
 axe DevTools (browser extension, "Scan all of my page") on the deployed site, signed in, including the registration dialog open and the event form showing validation errors: **0 issues** on every page.
 
+**Re-run after moving the API to Cloud Functions (11 October 2026).** The API now answers on the site's own origin at `/api` and the Content-Security-Policy no longer lists a separate API host. Lighthouse (accessibility) and axe DevTools were run again on the deployed site, signed in, on the same pages as above plus the admin dashboard: Lighthouse **100** and axe **0 issues** on every page, so the migration changed nothing for accessibility. (A first attempt against the local dev server reported one axe issue on Vue DevTools' floating button, `.panel-entry-btn`; that button is injected by the dev server only and is not in the production build.)
+
 ## 3. Manual checklist
 
 | Check (WCAG criterion) | Result | Evidence |

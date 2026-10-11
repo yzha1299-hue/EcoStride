@@ -15,9 +15,11 @@
       img-src allows OpenStreetMap's tile server for the Leaflet maps.
       style-src allows 'unsafe-inline' only because Vite's dev server hot-injects
       CSS as <style> tags (production builds use an external stylesheet instead);
-      connect-src is scoped to this app's own Firebase/Google endpoints and its
-      API Worker (filled in by Vite from VITE_API_BASE_URL at build time), so
-      injected script still can't exfiltrate data elsewhere.
+      connect-src is scoped to this app's own origin (which also serves the API
+      at /api) and its Firebase/Google endpoints, so injected script still can't
+      exfiltrate data elsewhere. The last connect-src entry is filled in by
+      vite.config.js with VITE_API_BASE_URL's origin, but only when that is a full URL (the
+      rollback to the old Worker); for the normal /api it is empty.
     -->
     <meta
       http-equiv="Content-Security-Policy"
@@ -28,7 +30,7 @@
         style-src 'self' 'unsafe-inline';
         img-src 'self' data: https://tile.openstreetmap.org;
         font-src 'self' data:;
-        connect-src 'self' ws: wss: https://*.googleapis.com https://*.firebaseio.com https://www.google.com %VITE_API_BASE_URL%;
+        connect-src 'self' ws: wss: https://*.googleapis.com https://*.firebaseio.com https://www.google.com %API_ORIGIN%;
         frame-src 'self' https://*.firebaseapp.com https://www.google.com https://recaptcha.google.com;
         object-src 'none';
         base-uri 'self';

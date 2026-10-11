@@ -102,7 +102,9 @@ export function createPublicApi({
       status = 200
       outcome = 'ok'
       // `private` keeps Firebase Hosting's CDN from serving one key holder's
-      // response to another; the caller's own browser may still reuse it.
+      // response to another. (Behind Hosting the header rule for extension-less
+      // paths in firebase.json replaces this with `no-cache` for the events
+      // routes, which is just as safe; only openapi.json keeps this value.)
       send(res, status, result, { ...headers, 'Cache-Control': 'private, max-age=60', Vary: 'X-API-Key' })
     } catch (error) {
       if (error instanceof ApiError) {
