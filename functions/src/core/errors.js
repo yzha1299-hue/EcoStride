@@ -18,5 +18,7 @@ export const notFound = (message = 'Not found.') => new ApiError(404, 'NOT_FOUND
 export const notOwner = (message = "Only the club member who created this event can do that.") =>
   new ApiError(403, 'NOT_OWNER', message)
 
+export const notAdmin = () => new ApiError(403, 'NOT_ADMIN', 'Only EcoStride admins can do that.')
+
 export const emailNotVerified = () =>
   new ApiError(403, 'EMAIL_NOT_VERIFIED', 'Verify your email address before using email features.')

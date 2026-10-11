@@ -20,6 +20,7 @@ import {
   geoSearchSchema,
 } from './handlers/geo.js'
 import { aiDraft, aiDraftSchema } from './handlers/aiDraft.js'
+import { approveClubRequest, clubRequestSchema, declineClubRequest } from './handlers/clubRequests.js'
 import { me } from './handlers/me.js'
 import { createPublicApi, isPublicRequest } from './public/publicApi.js'
 import {
@@ -83,6 +84,8 @@ const routes = {
   'POST /geo/directions': { handler: geoDirections, auth: true, schema: geoDirectionsSchema },
   'POST /geo/nearby': { handler: geoNearby, auth: true, schema: geoNearbySchema },
   'POST /ai/draft': { handler: aiDraft, auth: true, schema: aiDraftSchema },
+  'POST /admin/club-requests/approve': { handler: approveClubRequest, auth: true, schema: clubRequestSchema },
+  'POST /admin/club-requests/decline': { handler: declineClubRequest, auth: true, schema: clubRequestSchema },
 }
 
 // Built once per instance, not per request: the map services hold the caches
