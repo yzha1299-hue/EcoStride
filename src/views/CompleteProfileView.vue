@@ -21,10 +21,16 @@
 
         <p>
           <label class="form-label" for="profile-role">Role</label>
-          <select id="profile-role" v-model="selectedRole" class="form-select">
+          <select id="profile-role" v-model="selectedRole" class="form-select" aria-describedby="profile-role-hint">
             <option :value="ROLES.PARTICIPANT">Participant</option>
-            <option :value="ROLES.CLUB_MEMBER">Club member</option>
+            <option :value="ROLES.CLUB_MEMBER">Club member (needs admin approval)</option>
           </select>
+          <span id="profile-role-hint" class="form-text d-block" aria-live="polite">
+            <template v-if="selectedRole === ROLES.CLUB_MEMBER">
+              You'll join as a participant straight away, and your request to become a club member goes to an
+              EcoStride admin for approval.
+            </template>
+          </span>
         </p>
         <p>
           <button class="btn btn-success" type="button" :disabled="isSubmitting" @click="submit">
@@ -41,7 +47,7 @@
 import { onMounted, ref } from 'vue'
 import { doc, getDoc, getFirestore } from 'firebase/firestore'
 import { useRoute, useRouter } from 'vue-router'
-import { createUserProfile, redirectTarget, ROLES, setRole, user } from '../auth/authState'
+import { createUserProfile, redirectTarget, ROLES, user } from '../auth/authState'
 import { authErrorMessage } from '../auth/authErrors'
 
 const router = useRouter()
@@ -63,7 +69,6 @@ function submit() {
   isSubmitting.value = true
   createUserProfile(user.value, selectedRole.value)
     .then(() => {
-      setRole(selectedRole.value)
       router.push(redirectTarget(route.query))
     })
     .catch((error) => {

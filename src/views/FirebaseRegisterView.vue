@@ -33,10 +33,16 @@
         </div>
         <div class="mb-3">
           <label class="form-label" for="register-role">Role</label>
-          <select id="register-role" v-model="selectedRole" class="form-select">
+          <select id="register-role" v-model="selectedRole" class="form-select" aria-describedby="register-role-hint">
             <option :value="ROLES.PARTICIPANT">Participant</option>
-            <option :value="ROLES.CLUB_MEMBER">Club member</option>
+            <option :value="ROLES.CLUB_MEMBER">Club member (needs admin approval)</option>
           </select>
+          <div id="register-role-hint" class="form-text" aria-live="polite">
+            <template v-if="selectedRole === ROLES.CLUB_MEMBER">
+              You'll join as a participant straight away, and your request to become a club member goes to an
+              EcoStride admin for approval.
+            </template>
+          </div>
         </div>
         <button class="btn btn-success mb-3" type="submit" :disabled="isSubmitting">
           {{ isSubmitting ? 'Creating account…' : 'Create account' }}
@@ -58,7 +64,7 @@
 import { ref } from 'vue'
 import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth'
 import { useRouter } from 'vue-router'
-import { createUserProfile, ROLES, sendVerification, setRole } from '../auth/authState'
+import { createUserProfile, ROLES, sendVerification } from '../auth/authState'
 import { authErrorMessage } from '../auth/authErrors'
 import GoogleSignInButton from '../components/GoogleSignInButton.vue'
 import { validateEmail } from '../utils/validation'
@@ -102,7 +108,6 @@ const register = () => {
   createUserWithEmailAndPassword(auth, email.value, password.value)
     .then((data) => createUserProfile(data.user, selectedRole.value))
     .then(() => {
-      setRole(selectedRole.value)
       // Non-blocking: the account works without verification; only the
       // email-sending features require it, and the banner offers a resend.
       sendVerification().catch(() => {})
