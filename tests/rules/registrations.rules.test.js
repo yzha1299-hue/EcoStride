@@ -13,7 +13,7 @@ import {
 import { createRulesEnv, seed, signedInAs, signedOut } from './testEnv'
 
 // Registrations live at events/{eventId}/registrations/{uid}, keyed by the
-// registrant. Only the API Worker (service account, rules bypassed) writes them,
+// registrant. Only the API function (service account, rules bypassed) writes them,
 // so every client write must be denied.
 const registration = {
   name: 'Rita Registrant',

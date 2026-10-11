@@ -1,7 +1,6 @@
-// A small time-limited cache kept in the Worker isolate's memory. Cloudflare's
-// Cache API does nothing on *.workers.dev domains, so this is what lets
-// repeated map lookups skip the upstream service. Each isolate has its own
-// copy and loses it when recycled - fine for data that is cheap to refetch.
+// A small time-limited cache kept in the function instance's memory. It is
+// what lets repeated map lookups skip the upstream service. Each instance has
+// its own copy and loses it when recycled - fine for data that is cheap to refetch.
 export function createMemoryCache({ maxEntries = 200, ttlMs }) {
   const entries = new Map()
 

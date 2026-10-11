@@ -1,4 +1,4 @@
-// Shared by the web app (card badges) and the API Worker (registration checks),
+// Shared by the web app (card badges) and the API function (registration checks),
 // so "can someone register?" has exactly one definition.
 //
 // Only a human decision - cancellation - is stored on the event. "Full" and

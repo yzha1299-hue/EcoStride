@@ -1,5 +1,5 @@
 // The one CSV serialiser, shared by the web app (table exports) and the API
-// Worker (roster emails), so both produce identical files.
+// API function (roster emails), so both produce identical files.
 //
 // Follows RFC 4180: CRLF between records; a field containing a comma, quote or
 // line break is wrapped in quotes, with embedded quotes doubled.

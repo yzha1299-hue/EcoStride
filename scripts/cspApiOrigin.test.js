@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { apiOriginForCsp } from './cspApiOrigin.js'
 
 // The Content-Security-Policy only needs to name the API's host when the API
-// is on another origin (the rollback to the Worker); same-origin is 'self'.
+// is on another origin; same-origin is 'self'.
 describe('apiOriginForCsp', () => {
   it.each([undefined, '', '/api', '/'])('adds nothing for the same-origin API (%j)', (value) => {
     expect(apiOriginForCsp(value)).toBe('')
   })
 
   it('names the origin of a full URL, without any path', () => {
-    expect(apiOriginForCsp('https://ecostride-api.ecostride.workers.dev')).toBe('https://ecostride-api.ecostride.workers.dev')
+    expect(apiOriginForCsp('https://api.example.com')).toBe('https://api.example.com')
     expect(apiOriginForCsp('https://example.com:8443/v1/')).toBe('https://example.com:8443')
     expect(apiOriginForCsp('http://localhost:8787')).toBe('http://localhost:8787')
   })

@@ -48,6 +48,7 @@ npm run build
 npm test            # everything
 npm run test:unit   # Vitest unit tests (no emulator needed)
 npm run test:rules  # Firestore security rules, on the local emulator
+npm run test:api    # the API function end to end, on the Functions, Firestore and Auth emulators
 ```
 
 Rules tests need Java 11+ and the Firebase CLI (`npm install -g firebase-tools`). `test:rules` starts the Firestore emulator under the offline `demo-ecostride` project, runs `tests/rules/` against `firestore.rules` acting as different signed-in users, then shuts the emulator down. It never touches the real project.
@@ -58,12 +59,12 @@ Events live in Firestore. `npm run seed:events` writes five sample events (dated
 
 ```sh
 # PowerShell
-$env:GOOGLE_APPLICATION_CREDENTIALS = "C:\keys\ecostride-worker-key.json"  # outside the repo
+$env:GOOGLE_APPLICATION_CREDENTIALS = "C:\keys\ecostride-admin-key.json"  # outside the repo
 $env:SEED_CREATOR_UID = "<uid of a club-member account>"
 npm run seed:events
 ```
 
-The key can be one for the Worker's `ecostride-worker` service account (Cloud Datastore User is enough). `SEED_CREATOR_UID` becomes each event's `createdBy`, so that club member can manage them; find it in Firebase console > Authentication > Users.
+The key is for a service account that may use Firestore (Cloud Datastore User is enough), for example the Firebase Admin SDK account (Firebase console > Project settings > Service accounts > Generate new private key). Keep it outside the repo; the deployed function's own account, `ecostride-api`, deliberately has no key. `SEED_CREATOR_UID` becomes each event's `createdBy`, so that club member can manage them; find it in Firebase console > Authentication > Users.
 
 To try it without touching real data, run it against the emulator:
 `firebase emulators:exec --only firestore --project demo-ecostride "node scripts/seed-events.mjs"` (with `SEED_CREATOR_UID` set).
@@ -74,7 +75,7 @@ Admins (EcoStride staff) see the Admin dashboard (`/admin`) with user and event 
 
 ```sh
 # PowerShell
-$env:GOOGLE_APPLICATION_CREDENTIALS = "C:\keys\ecostride-worker-key.json"
+$env:GOOGLE_APPLICATION_CREDENTIALS = "C:\keys\ecostride-admin-key.json"
 npm run make-admin -- <uid>            # make admin
 npm run make-admin -- <uid> --revoke   # back to participant
 ```
@@ -96,100 +97,72 @@ npm run build
 firebase deploy --only hosting,firestore:rules,firestore:indexes
 ```
 
+(The API function has its own deploy; see "API on Cloud Functions" below.)
+
 The app uses HTML5 history routing, so `firebase.json` rewrites every path that is not a real file to `index.html`. Without it, opening or refreshing a deep link such as `/events` returns a 404. Hashed files under `/assets` are cached for a year. The app shell - `/`, `index.html` and every extension-less route such as `/events`, which are all rewritten to `index.html` - is served `no-cache`, so a new deploy takes effect on the next page load. (Firebase matches header rules against the requested path, not the rewritten one, so a rule for `/index.html` alone leaves `/events` on the default one-hour cache.)
 
-### API on Cloud Functions (migration from the Worker in progress)
+### API on Cloud Functions
 
-The API is moving from the Cloudflare Worker below to one 2nd-gen Cloud Function, `api`, in `australia-southeast1`. Firebase Hosting serves it on the site's own origin: `firebase.json` rewrites `/api/**` to the function, so the app calls `/api/...` with no CORS. Routes move over one by one; until the switch, the live site still uses the Worker.
+Server-side logic is one 2nd-generation Cloud Function, `api`, in `australia-southeast1` (next to Firestore). Firebase Hosting serves it on the site's own origin: `firebase.json` rewrites `/api/**` to the function, so the app calls `/api/...` with no CORS and no second origin. It uses the Firebase Admin SDK. Why it runs here rather than on Cloudflare Workers, where it started: [docs/adr/0001-api-on-cloud-functions.md](docs/adr/0001-api-on-cloud-functions.md).
 
-- Code: `functions/src` (handlers, pure modules and their unit tests); `functions/src/index.js` is the entry point and `functions/src/http.js` the HTTP adapter. Cloud Functions uploads only `functions/`, so `npm --prefix functions run build` bundles `functions/src` and `shared/` into `functions/lib/` with esbuild; `firebase deploy` runs it automatically (predeploy).
-- Local API: `npm run dev:api` rebuilds on change and serves the function on the Functions emulator; `npm run dev` proxies `/api` to it. It uses the real project's Firestore, so set `GOOGLE_APPLICATION_CREDENTIALS` to a service-account key first (outside the repo). To make the app use it, put `VITE_API_BASE_URL=/api` in `.env.local`.
-- Tests: `npm run test:api` builds the function and runs `tests/api` against it on the Functions, Firestore and Auth emulators (offline `demo-ecostride` project), with real ID tokens from the Auth emulator.
-- One-time setup before the first deploy: in Google Cloud console > IAM & Admin > Service Accounts, create `ecostride-api` (email `ecostride-api@ecostride-82c87.iam.gserviceaccount.com`) with only the **Cloud Datastore User** role and no keys. The function runs as this account.
-- Deploy: `firebase deploy --only functions,hosting`. The first deploy enables the Cloud Functions, Cloud Build, Artifact Registry and Cloud Run APIs.
+- **Code:** `functions/src` (handlers, pure modules and their unit tests). `functions/src/index.js` is the entry point and routing table; `functions/src/http.js` is the HTTP adapter (routing, body limits, identity, error shape, logging); `functions/src/public/publicApi.js` serves the partner-facing public API. Cloud Functions uploads only `functions/`, so `npm --prefix functions run build` bundles `functions/src` and `shared/` into `functions/lib/` with esbuild; `firebase deploy` runs it as a predeploy step.
+- **Service account:** the function runs as `ecostride-api@ecostride-82c87.iam.gserviceaccount.com`, created once in Google Cloud console > IAM & Admin > Service Accounts with only the **Cloud Datastore User** role and no keys. Deploying also grants it read access to the secrets below.
+- **Secrets** (Secret Manager; set each with `firebase functions:secrets:set NAME --project ecostride-82c87`, paste the value, then redeploy):
 
-### API Worker (Cloudflare Workers)
+  | Secret | Used for |
+  | --- | --- |
+  | `BREVO_API_KEY`, `BREVO_SENDER_EMAIL` | Email (see below) |
+  | `ORS_API_KEY` | Directions (OpenRouteService token from openrouteservice.org > Dashboard) |
+  | `GEMINI_API_KEY` | "Draft with AI" (Google AI Studio > Get API key) |
+  | `PUBLIC_API_KEYS` | Public API callers, comma-separated `name:key` pairs ([docs/public-api.md](docs/public-api.md)) |
 
-Server-side logic lives in `worker/` and is deployed separately from the site. It verifies the caller's Firebase ID token itself (with `jose`) and talks to Firestore over its REST API using a service account, because `firebase-admin` does not run on Workers.
-
-One-time setup:
-
-1. **Service account with least privilege.** In Google Cloud console for project `ecostride-82c87`: IAM & Admin > Service Accounts > Create, name it e.g. `ecostride-worker`, and grant only the **Cloud Datastore User** role. Then Keys > Add key > JSON. Keep the file outside the repo.
-2. `cd worker && npm install && npx wrangler login`
-3. Store the key as a secret by piping the file in (the interactive prompt keeps only the first line of a multi-line paste):
-   `Get-Content C:\keys\ecostride-worker-key.json -Raw | npx wrangler secret put FIREBASE_SERVICE_ACCOUNT` (PowerShell)
-4. `npm run deploy` and note the URL it prints (e.g. `https://ecostride-api.<subdomain>.workers.dev`).
-5. Set `VITE_API_BASE_URL` in the root `.env` to that URL, then rebuild and redeploy the site. The URL is also inserted into the page's Content-Security-Policy at build time.
-
-Email (Brevo, free tier) - needed for "Email me the roster" and emailing registrants:
-
-1. Create a Brevo account. Under **Senders, Domains & Dedicated IPs > Senders**, add the address emails should come from and click the link Brevo sends to verify it. Brevo rejects mail from unverified senders.
-2. Under **SMTP & API > API Keys**, create a v3 API key.
-3. In `worker/`: `npx wrangler secret put BREVO_API_KEY` and `npx wrangler secret put BREVO_SENDER_EMAIL` (the verified address; kept as a secret so a personal address stays out of the repo), then `npm run deploy`.
-
-Until both are set, email endpoints answer `EMAIL_UNAVAILABLE`. All sending goes through `worker/src/core/email.js`, so changing provider means changing that one file.
-
-Maps (Active Travel and the events map):
-
-1. Create a free account at openrouteservice.org and copy a token from its Dashboard.
-2. In `worker/`: `npx wrangler secret put ORS_API_KEY`, then `npm run deploy`.
-
-Place search (Nominatim) and nearby facilities (Overpass) need no key; the Worker identifies itself with the `NOMINATIM_USER_AGENT` in `wrangler.toml`, as their usage policies require. Map endpoints need a signed-in caller.
-
-AI drafting ("Draft with AI" on the email-registrants page and the event form):
-
-1. In Google AI Studio (aistudio.google.com), choose **Get API key** and create a key (free tier).
-2. In `worker/`: `npx wrangler secret put GEMINI_API_KEY`, then `npm run deploy`.
-3. The model is `GEMINI_MODEL` in `wrangler.toml`; if AI Studio's **Rate limits** page shows no free quota for it, switch to one that has.
-
-The Worker builds every prompt from event details it reads itself (never registrations), and allows each club member 20 drafts a day. Drafts are only returned to the organiser to edit.
-
-Local development: copy `worker/.dev.vars.example` to `worker/.dev.vars` (git-ignored), then `npm run dev` in `worker/`, and point `VITE_API_BASE_URL` at `http://localhost:8787`.
-
-Check it works: sign in on the dev site, open the browser console and run `await ecoApi.me()`. It should return your uid, email, whether it's verified, and your role read from Firestore.
-
-Allowed browser origins are listed in `ALLOWED_ORIGINS` in `worker/wrangler.toml`.
-
-Public API for partners (read-only upcoming events, API keys, 60 requests/minute): see [docs/public-api.md](docs/public-api.md). Set the keys with `npx wrangler secret put PUBLIC_API_KEYS` (comma-separated `name:key` pairs).
+- **Parameters** (not secret; `functions/.env.ecostride-82c87`): `NOMINATIM_USER_AGENT` (Nominatim and Overpass require a User-Agent that identifies the app), `GEMINI_MODEL` (if AI Studio's **Rate limits** page shows no free quota for it, switch to one that has) and `PUBLIC_SITE_URL`. An endpoint whose secret or parameter is empty answers `EMAIL_UNAVAILABLE`, `GEO_UNAVAILABLE` or `AI_UNAVAILABLE` instead of failing.
+- **Email (Brevo, free tier)** for "Email me the roster" and emailing registrants: create a Brevo account; under **Senders, Domains & Dedicated IPs > Senders** add the address emails come from and click the link Brevo sends (it rejects mail from unverified senders); under **SMTP & API > API Keys** create a v3 API key. Brevo only shows a key once, so keep it. All sending goes through `functions/src/core/email.js`, so changing provider means changing that one file.
+- **Deploy:** `firebase deploy --only functions --project ecostride-82c87`. On Windows the first analysis of the code can exceed the CLI's 10 s default, so set `FUNCTIONS_DISCOVERY_TIMEOUT=60` for the command (PowerShell: `$env:FUNCTIONS_DISCOVERY_TIMEOUT = "60"`). The first ever deploy enables the Cloud Functions, Cloud Build, Artifact Registry, Cloud Run and Secret Manager APIs. Deploy Hosting separately (above) when the front end changes.
+- **Local API:** `npm run dev:api` rebuilds on change and serves the function on the Functions emulator, and `npm run dev` proxies `/api` to it. Only the Functions emulator runs, so the function talks to the real project's Firestore and Auth: set `GOOGLE_APPLICATION_CREDENTIALS` to a service-account key outside the repo first. Put real keys in `functions/.secret.local` (git-ignored, `NAME=value` per line, no quotes). To make the app use the local API, put `VITE_API_BASE_URL=/api` in `.env.development.local` (not `.env.local`, which production builds read too). Local email goes out for real, to real registrants, so use a test event.
+- **Tests:** `npm run test:api` builds the function and runs `tests/api` against it on the Functions, Firestore and Auth emulators (offline `demo-ecostride` project), with real ID tokens from the Auth emulator. It moves `functions/.secret.local` aside for the run (and puts it back) so real keys can never leak into tests.
+- **Cost and safety:** `maxInstances` is capped at 10 so a spike or abuse cannot scale without limit, and `minInstances` stays 0. Set a Google Cloud budget with email alerts (Billing > Budgets & alerts; for example AUD 5 a month). The free tiers (function invocations, Secret Manager secret versions, Cloud Build and Artifact Registry storage for function images) are expected to cover this app. What could still incur cost on Blaze: invocations or compute beyond the free tier, Artifact Registry storage if old function images pile up, and Secret Manager if many secret versions accumulate.
+- **Logs:** Firebase console > Functions > `api` > Logs. Each request logs one structured line (endpoint, uid or API-key name, status, outcome, duration), never emails, names or request bodies; failed calls to other services log the status and a short detail.
 
 ### Serverless design
 
-The site is static files on Firebase Hosting; everything that must not run in the browser runs as a Cloudflare Worker (`worker/`). Each request is a separate function invocation: there is no server to keep running.
+The site is static files on Firebase Hosting; everything that must not run in the browser runs in the `api` Cloud Function. Each request is a function invocation on a container that Google starts and stops: there is no server to keep running.
 
 **Why each endpoint runs on the server**
 
 | Endpoint | Why it can't be done in the browser |
 | --- | --- |
-| `GET /me` | Proves the whole chain works: the Worker verifies the Firebase ID token itself and reads Firestore with a service account. |
-| `POST /registrations`, `POST /registrations/cancel` | The capacity cap. Registration and the event's `registeredCount` change in one Firestore commit, preconditioned on the event not having changed since it was read; the loser of a race re-reads and gets "full". Security rules alone can't compare a count to the number of documents, so clients may not write registrations at all. The registrant's email comes from the verified token, not the request. |
-| `POST /events/roster-email` | Holds the Brevo API key; reads registrant data the caller may see only as the event's creator; sends only to the caller's own verified address. |
-| `POST /events/email-registrants` | Holds the Brevo API key; loads recipients on the server so a caller can't email arbitrary addresses; enforces the 5-per-event-per-day limit in a record clients can't touch; re-checks attachment type, size and file signature. |
-| `POST /geo/search` | Proxies Nominatim with an identifying User-Agent and at most one request per second, which a browser can't guarantee across users. |
-| `POST /geo/directions` | Keeps the OpenRouteService key out of the bundle and caches routes to stay within its free quota. |
-| `POST /geo/nearby` | Proxies Overpass with one efficient query, caching and a single place to handle its rate limiting. |
-| `POST /ai/draft` | Keeps the Gemini key off the browser; builds the prompt from event details the Worker reads itself, so no registrant data can reach the AI service; enforces 20 drafts per club member per day. |
-| `GET /public/v1/events`, `GET /public/v1/events/{id}` | Lets other sites read events without Firestore credentials; the Worker decides exactly which fields leave the platform (no personal data), checks API keys and rate-limits each partner. |
+| `GET /api/me` | Proves the whole chain works: the function verifies the Firebase ID token with the Admin SDK and reads the caller's role from Firestore. |
+| `POST /api/registrations`, `POST /api/registrations/cancel` | The capacity cap. Registration and the event's `registeredCount` change in one Firestore transaction; transactions on the same event run one after another, so the loser of a race re-reads the event and gets "full". Security rules alone can't compare a count to the number of documents, so clients may not write registrations at all. The registrant's email comes from the verified token, not the request. |
+| `POST /api/events/roster-email` | Holds the Brevo API key; reads registrant data the caller may see only as the event's creator; sends only to the caller's own verified address. |
+| `POST /api/events/email-registrants` | Holds the Brevo API key; loads recipients on the server so a caller can't email arbitrary addresses; enforces the 5-per-event-per-day limit in a record clients can't touch; re-checks attachment type, size and file signature. |
+| `POST /api/geo/search` | Proxies Nominatim with an identifying User-Agent and at most one request per second, which a browser can't guarantee across users. |
+| `POST /api/geo/directions` | Keeps the OpenRouteService key out of the bundle and caches routes to stay within its free quota. |
+| `POST /api/geo/nearby` | Proxies Overpass with one efficient query, caching, and a fall-back across several public servers (any one is often overloaded). |
+| `POST /api/ai/draft` | Keeps the Gemini key off the browser; builds the prompt from event details the function reads itself, so no registrant data can reach the AI service; enforces 20 drafts per club member per day. |
+| `GET /api/public/v1/events`, `GET /api/public/v1/events/{id}` | Lets other sites read events without Firestore credentials; the function decides exactly which fields leave the platform (no personal data), checks API keys and rate-limits each partner. |
 
-Every endpoint verifies the caller's Firebase ID token (signature against Google's keys, issuer, audience, expiry), validates the request body (types, lengths, unknown fields rejected), and answers other websites' browsers with no CORS headers. Business logic lives in platform-agnostic handlers (`worker/src/handlers`); `worker/src/index.js` is the only Workers-specific file.
+Every private endpoint verifies the caller's Firebase ID token (signature against Google's keys, issuer, audience, expiry), validates the request body (types, lengths, unknown fields rejected), and sends no CORS headers, so other websites' browsers can't read its responses. Only the public API is open to any origin. Business logic lives in platform-agnostic handlers (`functions/src/handlers`); `functions/src/index.js` and `functions/src/http.js` are the only files that know about Cloud Functions.
 
 **Benefits of serverless here**
 
-- No server to run, patch or pay for while idle: the Worker scales to zero and up automatically with traffic.
-- Pay per request, and the free tier (100,000 requests/day) comfortably covers this app.
-- Runs at Cloudflare's edge, close to users; there is no always-on instance to fail.
-- Secrets (service account, Brevo and ORS keys) live in the platform's secret store, never in the repo or the bundle.
+- No server to run, patch or pay for while idle: the function scales to zero and up automatically with traffic, within the `maxInstances` cap.
+- Pay per use, and the free tier comfortably covers this app.
+- One platform: hosting, auth, database, API, secrets and logs are all in Firebase / Google Cloud, with one deploy.
+- Same origin as the site: no CORS preflight and no second connection.
+- Least privilege: the function runs as an account that can only use Firestore, with no key file; secrets live in Secret Manager, never in the repo or the bundle.
+- Tested end to end: `tests/api` exercises the real function on the emulators.
 
 **Costs and limits**
 
-- The free plan allows about 10 ms of CPU per request. Signing a service-account token costs RSA time, so Google access tokens and signing keys are cached per isolate; uploads are passed to Brevo still base64-encoded rather than decoded and re-encoded.
-- Isolates are short-lived and don't share memory, so caches and the Nominatim one-per-second throttle are per isolate, not global. (Cloudflare's Cache API does nothing on `*.workers.dev`.)
-- Cold starts add a little latency to the first request an isolate serves.
-- Vendor lock-in and a smaller ecosystem: `firebase-admin` doesn't run on Workers, so token verification (`jose`) and Firestore access (REST API) are written by hand.
-- Two platforms to deploy and monitor (Firebase and Cloudflare).
+- Cold starts: after idle the first request starts a container, so it is slower than on an always-warm edge runtime. `minInstances` stays 0 to avoid paying for idle capacity.
+- Caches, the public API's rate limit and the Nominatim one-per-second throttle live in each instance's memory, so they apply per instance, not globally. With `maxInstances` at 10 this is a soft limit, enough to stop a runaway client but not a precise global quota.
+- Blaze needs a billing account, so cost is bounded only by the instance cap and the budget alert, not by the platform.
+- Vendor lock-in: the function is tied to Firebase's runtime and Hosting rewrite, though the handlers are plain functions that could move.
 
-**Why Cloudflare Workers rather than Firebase Cloud Functions**
+**Why Cloud Functions rather than Cloudflare Workers**
 
-Cloud Functions require the paid Blaze plan (a billing account), which this project avoids; Workers' free tier needs no card. Workers also start faster (no container cold start) and run close to users. The price is the hand-written token verification and Firestore REST client described above, which in turn keeps the security-critical code small and explainable.
+The API first ran as a Cloudflare Worker because Cloud Functions need the paid Blaze plan, which the project did not have. Workers cannot run `firebase-admin`, so the Worker carried hand-written Firebase token verification (`jose`), a Firestore REST client with a service-account token exchange, and a REST-commit retry loop for the registration race, on a second origin that needed CORS and a Content-Security-Policy entry, with no automated tests of its endpoints. Once the project moved to Blaze, Cloud Functions removed all of that: the Admin SDK verifies tokens and talks to Firestore, transactions replace the retry loop, the API is on the site's origin, and the emulator tests run in `npm test`. What was given up is Workers' faster cold start and a free tier that needs no card. The full reasoning is in [docs/adr/0001-api-on-cloud-functions.md](docs/adr/0001-api-on-cloud-functions.md).
 
 ### Lint with [ESLint](https://eslint.org/)
 

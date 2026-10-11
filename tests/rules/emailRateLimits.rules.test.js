@@ -3,7 +3,7 @@ import { assertFails } from '@firebase/rules-unit-testing'
 import { deleteDoc, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'
 import { createRulesEnv, seed, signedInAs } from './testEnv'
 
-// Daily bulk-email counters are written only by the API Worker.
+// Daily bulk-email counters are written only by the API function.
 let env
 
 beforeAll(async () => {

@@ -3,7 +3,7 @@ import { refreshVerification } from '../auth/authState'
 
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 
-// Mirrors the Worker's error shape so views can branch on `code`
+// Mirrors the API's error shape so views can branch on `code`
 // (e.g. EVENT_FULL) and show `message` to the user.
 export class ApiError extends Error {
   constructor(status, code, message) {

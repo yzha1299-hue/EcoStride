@@ -4,7 +4,7 @@ import { PUBLIC_EVENT_FIELDS, toPublicEvent } from './publicEvent.js'
 const NOW = new Date('2026-09-28T00:00:00Z')
 const SITE = 'https://ecostride-82c87.web.app'
 
-// An event as the Worker reads it from Firestore, including the fields that
+// An event as the API reads it from Firestore, including the fields that
 // must never leave the platform.
 function stored(overrides = {}) {
   return {

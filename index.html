@@ -19,7 +19,7 @@
       at /api) and its Firebase/Google endpoints, so injected script still can't
       exfiltrate data elsewhere. The last connect-src entry is filled in by
       vite.config.js with VITE_API_BASE_URL's origin, but only when that is a full URL (the
-      rollback to the old Worker); for the normal /api it is empty.
+      API on a separate host); for the normal /api it is empty.
     -->
     <meta
       http-equiv="Content-Security-Policy"
