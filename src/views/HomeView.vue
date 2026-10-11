@@ -1,9 +1,9 @@
 <script setup>
 import { computed } from 'vue'
-import heroImage from '../assets/hero-active-travel.svg'
-import travelImage from '../assets/card-travel.svg'
-import clubsImage from '../assets/card-clubs.svg'
-import eventsImage from '../assets/card-events.svg'
+import heroImage from '../assets/hero-active-travel.jpg'
+import travelImage from '../assets/card-travel.jpg'
+import clubsImage from '../assets/card-clubs.jpg'
+import eventsImage from '../assets/card-events.jpg'
 import { useJsonData } from '../composables/useJsonData'
 import { formatNumber } from '../utils/format'
 

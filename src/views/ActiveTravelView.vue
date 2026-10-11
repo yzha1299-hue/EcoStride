@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, reactive, ref, watch } from 'vue'
-import travelImage from '../assets/card-travel.svg'
+import travelImage from '../assets/route-thumb.jpg'
 import { useJsonData } from '../composables/useJsonData'
 import { user } from '../auth/authState'
 import { geoDirections, geoNearby, geoSearch } from '../api/client'
@@ -507,8 +507,8 @@ async function selectRoute(id, { fromMap = false } = {}) {
                 :class="{ 'border-primary border-2': route.id === selectedId }"
               >
                 <div class="row g-0 align-items-center">
-                  <div class="col-4 col-sm-3">
-                    <img class="img-fluid rounded-start route-thumb" :src="travelImage" alt="" />
+                  <div class="col-4 col-sm-3 align-self-stretch">
+                    <img class="rounded-start route-thumb" :src="travelImage" alt="" />
                   </div>
                   <div class="col-8 col-sm-9">
                     <div class="card-body py-3">
@@ -550,6 +550,16 @@ async function selectRoute(id, { fromMap = false } = {}) {
 </template>
 
 <style scoped>
+/* Shows the whole photo, uncropped; spare space above and below is padding. */
+.route-thumb {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 7rem;
+  object-fit: contain;
+  background-color: var(--bs-light, #f8f9fa);
+}
+
 .amenity-swatch {
   display: inline-flex;
   align-items: center;
